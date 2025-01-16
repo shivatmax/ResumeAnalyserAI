@@ -54,12 +54,10 @@ serve(async (req) => {
 
     console.log('Successfully downloaded resume, size:', fileData.size)
 
-    // Generate a unique boundary string for multipart/form-data
-    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
-
-    // Create the multipart form-data manually
-    const formData = new FormData();
-    formData.append('files', fileData, 'resume.pdf');
+    // Create form data with the PDF file
+    const formData = new FormData()
+    const blob = new Blob([fileData], { type: 'application/pdf' })
+    formData.append('files', blob, 'resume.pdf')
 
     console.log('Sending request to Unstructured API...')
     const unstructuredResponse = await fetch('https://api.unstructured.io/general/v0.2.0/general', {
@@ -67,18 +65,18 @@ serve(async (req) => {
       headers: {
         'Accept': 'application/json',
         'unstructured-api-key': UNSTRUCTURED_API_KEY!,
-        // Let the browser set the Content-Type with boundary
       },
       body: formData,
     })
 
     if (!unstructuredResponse.ok) {
+      const errorText = await unstructuredResponse.text()
       console.error('Unstructured API error:', {
         status: unstructuredResponse.status,
         statusText: unstructuredResponse.statusText,
-        body: await unstructuredResponse.text()
+        body: errorText
       })
-      throw new Error(`Unstructured API error: ${unstructuredResponse.statusText}`)
+      throw new Error(`Unstructured API error: ${unstructuredResponse.statusText}. Details: ${errorText}`)
     }
 
     const parsedData = await unstructuredResponse.json()
