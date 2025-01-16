@@ -13,6 +13,7 @@ const JobSeeker = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -52,8 +53,9 @@ const JobSeeker = () => {
     }
   };
 
-  const handleApply = async (jobId: string) => {
+  const handleApply = (jobId: string) => {
     setSelectedJobId(jobId);
+    setDialogOpen(true);
   };
 
   const handleSubmitApplication = async () => {
@@ -96,6 +98,7 @@ const JobSeeker = () => {
       toast.success("Application submitted successfully!");
       setSelectedFile(null);
       setSelectedJobId(null);
+      setDialogOpen(false);
     } catch (error) {
       toast.error("Failed to submit application");
       console.error(error);
@@ -104,7 +107,7 @@ const JobSeeker = () => {
     }
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
 
   return (
     <div className="container mx-auto p-6">
@@ -116,7 +119,7 @@ const JobSeeker = () => {
             <p className="text-gray-600 mb-2">{job.company_name}</p>
             <p className="text-sm mb-2">{job.location}</p>
             <p className="text-sm mb-4">{job.employment_type}</p>
-            <Dialog>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => handleApply(job.id)}>Apply Now</Button>
               </DialogTrigger>
