@@ -1,10 +1,11 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import 'https://deno.land/x/xhr@0.1.0/mod.ts';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
 };
 
 const UNSTRUCTURED_API_KEY = Deno.env.get('UNSTRUCTURED_API_KEY');
@@ -28,96 +29,121 @@ async function extractStructuredData(text: string) {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: 'gpt-4o-2024-08-06',
       messages: [
         {
-          role: "system",
-          content: "You are an expert at extracting structured information from resumes. Extract the information in a consistent format."
+          role: 'system',
+          content: `You are an expert at extracting structured information from resumes. 
+            Extract the information in a consistent format.
+            The output should be a JSON object with the following properties: personal_information, education, professional_experience, skills, certifications, and projects.
+            If the information is not present, return null for the corresponding property.`,
         },
         {
-          role: "user",
-          content: text
-        }
+          role: 'user',
+          content: text,
+        },
       ],
       response_format: {
-        type: "json_schema",
+        type: 'json_schema',
         json_schema: {
-          type: "object",
-          properties: {
-            personal_information: {
-              type: "object",
-              properties: {
-                name: { type: "string" },
-                email: { type: "string" },
-                phone: { type: "string" }
+          name: 'resume_schema',
+          schema: {
+            type: 'object',
+            properties: {
+              personal_information: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  email: { type: 'string' },
+                  phone: { type: 'string' },
+                },
+                required: ['name'],
+                additionalProperties: false,
               },
-              required: ["name"]
-            },
-            education: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  university: { type: "string" },
-                  graduation_year: { type: "string" },
-                  course: { type: "string" },
-                  gpa: { type: "string" }
+              education: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    university: { type: 'string' },
+                    graduation_year: { type: 'string' },
+                    course: { type: 'string' },
+                    gpa: { type: 'string' },
+                  },
+                  required: ['university', 'course'],
+                  additionalProperties: false,
                 },
-                required: ["university", "course"]
-              }
-            },
-            professional_experience: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  company: { type: "string" },
-                  position: { type: "string" },
-                  duration: { type: "string" },
-                  responsibilities: {
-                    type: "array",
-                    items: { type: "string" }
-                  }
+              },
+              professional_experience: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    company: { type: 'string' },
+                    position: { type: 'string' },
+                    duration: { type: 'string' },
+                    responsibilities: {
+                      type: 'array',
+                      items: { type: 'string' },
+                    },
+                  },
+                  required: ['company', 'position'],
+                  additionalProperties: false,
                 },
-                required: ["company", "position"]
-              }
-            },
-            skills: {
-              type: "array",
-              items: { type: "string" }
-            },
-            certifications: {
-              type: "array",
-              items: { type: "string" }
-            },
-            projects: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  description: { type: "string" },
-                  technologies: {
-                    type: "array",
-                    items: { type: "string" }
-                  }
+              },
+              skills: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+              certifications: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+              projects: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    description: { type: 'string' },
+                    technologies: {
+                      type: 'array',
+                      items: { type: 'string' },
+                    },
+                  },
+                  required: ['name'],
+                  additionalProperties: false,
                 },
-                required: ["name"]
-              }
-            }
+              },
+            },
+            required: ['personal_information', 'education', 'skills'],
+            additionalProperties: false,
           },
-          required: ["personal_information", "education", "skills"]
-        }
-      }
-    })
+        },
+      },
+    }),
   });
 
   const data = await response.json();
-  return data.choices[0].message.content;
+
+  // Add null check and fallback for data.choices
+  if (!data?.choices?.[0]?.message?.content) {
+    throw new Error('Invalid response format from OpenAI API: ' + data);
+  }
+
+  try {
+    // Parse the content string as JSON since it comes as a stringified JSON
+    const parsedContent = JSON.parse(data.choices[0].message.content);
+    console.log('Parsed content:', parsedContent);
+    return parsedContent;
+  } catch (error) {
+    console.error('Error parsing OpenAI API response content:', error);
+    throw new Error('Failed to parse OpenAI API response content as JSON');
+  }
 }
 
 serve(async (req) => {
@@ -160,17 +186,19 @@ serve(async (req) => {
     const formData = new FormData();
     const blob = new Blob([fileData], { type: 'application/pdf' });
     formData.append('files', blob, 'resume.pdf');
-    formData.append('strategy', 'hi_res');
 
     console.log('Sending request to Unstructured API...');
-    const unstructuredResponse = await fetch('https://api.unstructured.io/general/v0.2.0/general', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'unstructured-api-key': UNSTRUCTURED_API_KEY,
-      },
-      body: formData,
-    });
+    const unstructuredResponse = await fetch(
+      'https://api.unstructuredapp.io/general/v0/general',
+      {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'unstructured-api-key': UNSTRUCTURED_API_KEY,
+        },
+        body: formData,
+      }
+    );
 
     if (!unstructuredResponse.ok) {
       const errorText = await unstructuredResponse.text();
@@ -187,9 +215,17 @@ serve(async (req) => {
     const extractedText = await unstructuredResponse.json();
     console.log('Successfully extracted text from resume');
 
+    // Add null check for extractedText
+    if (!Array.isArray(extractedText)) {
+      throw new Error('Invalid response format from Unstructured API');
+    }
+
     // Process the parsed data to extract only the text
-    const processedText = extractedText.map((item: any) => item.text).join('\n');
-    
+    const processedText = extractedText
+      .map((item) => item?.text || '')
+      .filter(Boolean)
+      .join('\n');
+
     // Use OpenAI to extract structured information
     const structuredData = await extractStructuredData(processedText);
     console.log('Successfully parsed resume structure');
