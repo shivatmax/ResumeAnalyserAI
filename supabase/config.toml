@@ -1,5 +1,4 @@
 project_id = "qaazfhxpzzwnppgcvmbi"
-[api]
-enabled = true
-[api.cors]
-enabled = true
+[functions]
+[functions.parse-resume]
+verify_jwt = true

@@ -62,8 +62,7 @@ serve(async (req) => {
 
     // Create form data with the PDF file
     const formData = new FormData()
-    const blob = new Blob([fileData], { type: 'application/pdf' })
-    formData.append('files', blob, 'resume.pdf')
+    formData.append('files', new Blob([fileData], { type: 'application/pdf' }), 'resume.pdf')
 
     console.log('Sending request to Unstructured API...')
     const unstructuredResponse = await fetch('https://api.unstructured.io/general/v0.2.0/general', {
