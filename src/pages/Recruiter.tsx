@@ -8,6 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Database } from "@/integrations/supabase/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
 
 type EmploymentType = Database["public"]["Enums"]["employment_type"];
 type ExperienceLevel = Database["public"]["Enums"]["experience_level"];
@@ -20,11 +28,16 @@ type FormData = {
   employment_type: EmploymentType;
   experience_level: ExperienceLevel;
   application_deadline: string;
+  salary_min?: number;
+  salary_max?: number;
+  education_requirements?: string;
+  skills: string[];
 };
 
 const Recruiter = () => {
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     title: "",
     description: "",
@@ -33,6 +46,10 @@ const Recruiter = () => {
     employment_type: "full-time",
     experience_level: "entry",
     application_deadline: "",
+    salary_min: undefined,
+    salary_max: undefined,
+    education_requirements: "",
+    skills: [],
   });
 
   useEffect(() => {
@@ -61,6 +78,38 @@ const Recruiter = () => {
       return data;
     },
   });
+
+  const analyzeJobDescription = async () => {
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch('/functions/v1/analyze-job', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ jobData: formData }),
+      });
+
+      if (!response.ok) throw new Error('Failed to analyze job description');
+
+      const analysis = await response.json();
+      
+      setFormData(prev => ({
+        ...prev,
+        skills: analysis.required_skills,
+        experience_level: analysis.experience_requirements.level.toLowerCase() as ExperienceLevel,
+        education_requirements: analysis.education_requirements,
+      }));
+
+      toast.success("Job description analyzed successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to analyze job description");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,59 +146,113 @@ const Recruiter = () => {
       {showForm && (
         <Card className="p-6 mb-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              placeholder="Job Title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Input
+                  placeholder="Job Title"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Input
+                  placeholder="Company Name"
+                  value={formData.company_name}
+                  onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
             <Textarea
               placeholder="Job Description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
+              className="min-h-[200px]"
             />
-            <Input
-              placeholder="Company Name"
-              value={formData.company_name}
-              onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-              required
-            />
-            <Input
-              placeholder="Location"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              required
-            />
-            <select
-              className="w-full p-2 border rounded"
-              value={formData.employment_type}
-              onChange={(e) => setFormData({ ...formData, employment_type: e.target.value as EmploymentType })}
-              required
+
+            <Button 
+              type="button" 
+              onClick={analyzeJobDescription}
+              disabled={isAnalyzing || !formData.description}
+              className="w-full"
             >
-              <option value="full-time">Full Time</option>
-              <option value="part-time">Part Time</option>
-              <option value="contract">Contract</option>
-              <option value="internship">Internship</option>
-            </select>
-            <select
-              className="w-full p-2 border rounded"
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                "Analyze with AI"
+              )}
+            </Button>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                placeholder="Location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                required
+              />
+
+              <Select
+                value={formData.employment_type}
+                onValueChange={(value: EmploymentType) => 
+                  setFormData({ ...formData, employment_type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Employment Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full-time">Full Time</SelectItem>
+                  <SelectItem value="part-time">Part Time</SelectItem>
+                  <SelectItem value="contract">Contract</SelectItem>
+                  <SelectItem value="internship">Internship</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                type="number"
+                placeholder="Minimum Salary"
+                value={formData.salary_min || ""}
+                onChange={(e) => setFormData({ ...formData, salary_min: parseInt(e.target.value) })}
+              />
+              <Input
+                type="number"
+                placeholder="Maximum Salary"
+                value={formData.salary_max || ""}
+                onChange={(e) => setFormData({ ...formData, salary_max: parseInt(e.target.value) })}
+              />
+            </div>
+
+            <Select
               value={formData.experience_level}
-              onChange={(e) => setFormData({ ...formData, experience_level: e.target.value as ExperienceLevel })}
-              required
+              onValueChange={(value: ExperienceLevel) => 
+                setFormData({ ...formData, experience_level: value })}
             >
-              <option value="entry">Entry Level</option>
-              <option value="mid">Mid Level</option>
-              <option value="senior">Senior Level</option>
-              <option value="executive">Executive Level</option>
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder="Experience Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="entry">Entry Level</SelectItem>
+                <SelectItem value="mid">Mid Level</SelectItem>
+                <SelectItem value="senior">Senior Level</SelectItem>
+                <SelectItem value="executive">Executive Level</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Input
               type="datetime-local"
               value={formData.application_deadline}
               onChange={(e) => setFormData({ ...formData, application_deadline: e.target.value })}
               required
             />
-            <Button type="submit">Post Job</Button>
+
+            <Button type="submit" className="w-full">Post Job</Button>
           </form>
         </Card>
       )}
@@ -164,6 +267,21 @@ const Recruiter = () => {
             <p className="text-sm mb-2">
               Applications: {job.applications?.length || 0}
             </p>
+            {job.skills && job.skills.length > 0 && (
+              <div className="mt-2">
+                <p className="text-sm font-semibold">Required Skills:</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {job.skills.map((skill, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-gray-100 rounded-full text-xs"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </Card>
         ))}
       </div>
