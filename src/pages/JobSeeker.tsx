@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
 const JobSeeker = () => {
   const navigate = useNavigate();
@@ -86,11 +87,20 @@ const JobSeeker = () => {
         .from('resumes')
         .getPublicUrl(filePath);
 
+      // Parse resume using Edge Function
+      const { data: parsedData, error: parseError } = await supabase.functions
+        .invoke('parse-resume', {
+          body: { resumeUrl: publicUrl },
+        });
+
+      if (parseError) throw parseError;
+
       const { error: applicationError } = await supabase.from("applications").insert({
         job_id: selectedJobId,
         applicant_id: userId,
         resume_url: publicUrl,
         status: "pending",
+        parsed_data: parsedData.data,
       });
 
       if (applicationError) throw applicationError;
@@ -138,7 +148,14 @@ const JobSeeker = () => {
                     onClick={handleSubmitApplication}
                     disabled={!selectedFile || isUploading}
                   >
-                    {isUploading ? "Uploading..." : "Submit Application"}
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Submit Application"
+                    )}
                   </Button>
                 </div>
               </DialogContent>
