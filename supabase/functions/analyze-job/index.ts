@@ -39,8 +39,6 @@ serve(async (req) => {
           schema: {
             type: "object",
             properties: {
-              title: { type: "string" },
-              description: { type: "string" },
               required_skills: {
                 type: "array",
                 items: { type: "string" }
@@ -49,16 +47,14 @@ serve(async (req) => {
                 type: "object",
                 properties: {
                   minimum_years: { type: "number" },
-                  level: { type: "string" }
+                  level: { type: "string",
+                    enum: ["ENTRY", "MID", "SENIOR", "EXECUTIVE"]
+                  }
                 }
               },
-              education_requirements: { type: "string" },
-              key_responsibilities: {
-                type: "array",
-                items: { type: "string" }
-              }
+              education_requirements: { type: "string" }
             },
-            required: ["title", "description", "required_skills", "experience_requirements"]
+            required: ["required_skills", "experience_requirements", "education_requirements"]
           }
         }
       }),
