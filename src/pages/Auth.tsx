@@ -37,6 +37,8 @@ const Auth = () => {
           return 'Please verify your email address before signing in.';
         case 'user_not_found':
           return 'No user found with these credentials.';
+        case 'user_already_exists':
+          return 'An account with this email already exists. Please sign in instead.';
         case 'invalid_grant':
           return 'Invalid login credentials.';
         default:
@@ -65,6 +67,9 @@ const Auth = () => {
             appearance={{ theme: ThemeSupa }}
             theme="light"
             providers={[]}
+            onError={(error) => {
+              setErrorMessage(getErrorMessage(error));
+            }}
           />
         </div>
       </div>
