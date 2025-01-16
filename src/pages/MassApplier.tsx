@@ -4,16 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Database } from "@/integrations/supabase/types";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
 const MassApplier = () => {
   const navigate = useNavigate();
-  const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
+  const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -64,8 +65,8 @@ const MassApplier = () => {
       return;
     }
 
-    if (selectedJobs.length === 0) {
-      toast.error("Please select at least one job");
+    if (!selectedJob) {
+      toast.error("Please select a job to apply to");
       return;
     }
 
@@ -94,14 +95,12 @@ const MassApplier = () => {
           .from('resumes')
           .getPublicUrl(filePath);
 
-        for (const jobId of selectedJobs) {
-          applications.push({
-            job_id: jobId,
-            applicant_id: userId,
-            resume_url: publicUrl,
-            status: "pending" as ApplicationStatus,
-          });
-        }
+        applications.push({
+          job_id: selectedJob,
+          applicant_id: userId,
+          resume_url: publicUrl,
+          status: "pending" as ApplicationStatus,
+        });
       }
 
       const { error: applicationError } = await supabase
@@ -110,9 +109,9 @@ const MassApplier = () => {
 
       if (applicationError) throw applicationError;
 
-      toast.success("Applications submitted successfully!");
+      toast.success(`Successfully submitted ${applications.length} applications!`);
       setSelectedFiles(null);
-      setSelectedJobs([]);
+      setSelectedJob(null);
     } catch (error) {
       toast.error("Failed to submit applications");
       console.error(error);
@@ -121,21 +120,13 @@ const MassApplier = () => {
     }
   };
 
-  const toggleJobSelection = (jobId: string) => {
-    setSelectedJobs((prev) =>
-      prev.includes(jobId)
-        ? prev.filter((id) => id !== jobId)
-        : [...prev, jobId]
-    );
-  };
-
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
 
   return (
     <div className="container mx-auto p-6">
       <div className="flex flex-col gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Upload Resumes</h2>
+          <h2 className="text-xl font-semibold mb-4">Upload Multiple Resumes</h2>
           <Input
             type="file"
             accept=".pdf"
@@ -149,36 +140,42 @@ const MassApplier = () => {
         </div>
 
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Select Jobs</h1>
+          <h1 className="text-3xl font-bold">Select a Job</h1>
           <Button
             onClick={handleMassApply}
-            disabled={selectedJobs.length === 0 || !selectedFiles || isUploading}
+            disabled={!selectedJob || !selectedFiles || isUploading}
           >
             {isUploading 
               ? "Uploading..." 
-              : `Apply to Selected (${selectedJobs.length})`
+              : `Apply with ${selectedFiles?.length || 0} Resumes`
             }
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <RadioGroup
+          value={selectedJob || ""}
+          onValueChange={(value) => setSelectedJob(value)}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
           {jobs?.map((job) => (
-            <Card key={job.id} className="p-6">
-              <div className="flex items-start gap-4">
-                <Checkbox
-                  checked={selectedJobs.includes(job.id)}
-                  onCheckedChange={() => toggleJobSelection(job.id)}
-                />
-                <div>
-                  <h2 className="text-xl font-semibold mb-2">{job.title}</h2>
-                  <p className="text-gray-600 mb-2">{job.company_name}</p>
-                  <p className="text-sm mb-2">{job.location}</p>
-                  <p className="text-sm mb-4">{job.employment_type}</p>
-                </div>
-              </div>
-            </Card>
+            <div key={job.id} className="relative">
+              <RadioGroupItem
+                value={job.id}
+                id={job.id}
+                className="peer sr-only"
+              />
+              <Label
+                htmlFor={job.id}
+                className="flex flex-col p-6 bg-white rounded-lg shadow cursor-pointer border-2 peer-data-[state=checked]:border-primary"
+              >
+                <h2 className="text-xl font-semibold mb-2">{job.title}</h2>
+                <p className="text-gray-600 mb-2">{job.company_name}</p>
+                <p className="text-sm mb-2">{job.location}</p>
+                <p className="text-sm mb-4">{job.employment_type}</p>
+              </Label>
+            </div>
           ))}
-        </div>
+        </RadioGroup>
       </div>
     </div>
   );
