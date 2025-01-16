@@ -48,7 +48,7 @@ const Index = () => {
             title="Job Seeker"
             description="Browse and apply to jobs that match your skills and experience"
             icon={<UserCircle2 className="w-12 h-12" />}
-            onClick={() => navigate("/jobs")}
+            onClick={() => navigate("/job-seeker")}
           />
         </motion.div>
 
@@ -66,7 +66,7 @@ const Index = () => {
             title="Mass Applier"
             description="Apply to multiple jobs efficiently with bulk resume uploads"
             icon={<Users className="w-12 h-12" />}
-            onClick={() => navigate("/mass-apply")}
+            onClick={() => navigate("/mass-applier")}
           />
         </motion.div>
       </motion.div>
