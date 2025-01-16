@@ -7,11 +7,25 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { Database } from "@/integrations/supabase/types";
+
+type EmploymentType = Database["public"]["Enums"]["employment_type"];
+type ExperienceLevel = Database["public"]["Enums"]["experience_level"];
+
+type FormData = {
+  title: string;
+  description: string;
+  company_name: string;
+  location: string;
+  employment_type: EmploymentType;
+  experience_level: ExperienceLevel;
+  application_deadline: string;
+};
 
 const Recruiter = () => {
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     title: "",
     description: "",
     company_name: "",
@@ -110,13 +124,24 @@ const Recruiter = () => {
             <select
               className="w-full p-2 border rounded"
               value={formData.employment_type}
-              onChange={(e) => setFormData({ ...formData, employment_type: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, employment_type: e.target.value as EmploymentType })}
               required
             >
               <option value="full-time">Full Time</option>
               <option value="part-time">Part Time</option>
               <option value="contract">Contract</option>
               <option value="internship">Internship</option>
+            </select>
+            <select
+              className="w-full p-2 border rounded"
+              value={formData.experience_level}
+              onChange={(e) => setFormData({ ...formData, experience_level: e.target.value as ExperienceLevel })}
+              required
+            >
+              <option value="entry">Entry Level</option>
+              <option value="mid">Mid Level</option>
+              <option value="senior">Senior Level</option>
+              <option value="executive">Executive Level</option>
             </select>
             <Input
               type="datetime-local"

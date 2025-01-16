@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { Database } from "@/integrations/supabase/types";
+
+type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
 const MassApplier = () => {
   const navigate = useNavigate();
@@ -47,7 +50,7 @@ const MassApplier = () => {
         job_id: jobId,
         applicant_id: session.user.id,
         resume_url: "placeholder", // You'll need to implement file upload
-        status: "pending",
+        status: "pending" as ApplicationStatus,
       }));
 
       const { error } = await supabase.from("applications").insert(applications);
