@@ -62,10 +62,12 @@ serve(async (req) => {
 
     // Create form data with the PDF file
     const formData = new FormData()
-    formData.append('files', new Blob([fileData], { type: 'application/pdf' }), 'resume.pdf')
+    const blob = new Blob([fileData], { type: 'application/pdf' })
+    formData.append('files', blob, 'resume.pdf')
 
+    // Updated Unstructured API endpoint and parameters
     console.log('Sending request to Unstructured API...')
-    const unstructuredResponse = await fetch('https://api.unstructured.io/general/v0.2.0/general', {
+    const unstructuredResponse = await fetch('https://api.unstructured.io/general/v0.2.0/partition', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -79,7 +81,8 @@ serve(async (req) => {
       console.error('Unstructured API error:', {
         status: unstructuredResponse.status,
         statusText: unstructuredResponse.statusText,
-        body: errorText
+        body: errorText,
+        headers: Object.fromEntries(unstructuredResponse.headers.entries())
       })
       throw new Error(`Unstructured API error: ${unstructuredResponse.statusText}. Details: ${errorText}`)
     }
@@ -92,7 +95,8 @@ serve(async (req) => {
       text: parsedData.map((item: any) => item.text).join('\n'),
       metadata: {
         parsed_at: new Date().toISOString(),
-        source: 'unstructured-api'
+        source: 'unstructured-api',
+        raw_response: parsedData
       }
     }
 
