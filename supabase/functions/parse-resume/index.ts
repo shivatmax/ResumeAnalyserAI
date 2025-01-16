@@ -1,8 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { corsHeaders } from '../_shared/cors.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const UNSTRUCTURED_API_KEY = Deno.env.get('UNSTRUCTURED_API_KEY')
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -17,28 +22,41 @@ serve(async (req) => {
       throw new Error('Resume URL is required')
     }
 
-    // Download resume content with proper headers
-    const response = await fetch(resumeUrl, {
-      headers: {
-        'Accept': 'application/pdf',
-      }
-    })
+    // Initialize Supabase client with service role key
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-    if (!response.ok) {
-      console.error('Failed to fetch resume:', {
-        status: response.status,
-        statusText: response.statusText,
-        url: resumeUrl
-      })
-      throw new Error(`Failed to fetch resume: ${response.statusText}`)
+    // Extract bucket and path from URL
+    const url = new URL(resumeUrl)
+    const pathSegments = url.pathname.split('/')
+    const bucketIndex = pathSegments.findIndex(segment => segment === 'object') + 2
+    const bucket = pathSegments[bucketIndex]
+    const path = pathSegments.slice(bucketIndex + 1).join('/')
+
+    console.log('Fetching file from storage:', { bucket, path })
+
+    // Download file using Supabase client
+    const { data: fileData, error: downloadError } = await supabase
+      .storage
+      .from(bucket)
+      .download(path)
+
+    if (downloadError) {
+      console.error('Failed to download file:', downloadError)
+      throw new Error(`Failed to download file: ${downloadError.message}`)
     }
 
-    const blob = await response.blob()
-    console.log('Successfully downloaded resume, size:', blob.size)
+    if (!fileData) {
+      throw new Error('No file data received')
+    }
+
+    console.log('Successfully downloaded resume, size:', fileData.size)
 
     // Parse resume with Unstructured
     const formData = new FormData()
-    formData.append('files', blob, 'resume.pdf')
+    formData.append('files', fileData, 'resume.pdf')
 
     console.log('Sending request to Unstructured API...')
     const unstructuredResponse = await fetch('https://api.unstructured.io/general/v0.2.0/general', {
