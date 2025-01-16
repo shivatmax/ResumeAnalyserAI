@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Database } from "@/integrations/supabase/types";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
@@ -17,6 +18,9 @@ const MassApplier = () => {
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [processedCount, setProcessedCount] = useState(0);
+  const [totalFiles, setTotalFiles] = useState(0);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -45,7 +49,6 @@ const MassApplier = () => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      // Check if all files are PDFs
       const allPdfs = Array.from(files).every(file => file.type === "application/pdf");
       if (!allPdfs) {
         toast.error("Please upload only PDF files");
@@ -56,6 +59,45 @@ const MassApplier = () => {
         return;
       }
       setSelectedFiles(files);
+      setTotalFiles(files.length);
+    }
+  };
+
+  const processResume = async (file: File, userId: string, jobId: string) => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${userId}/${crypto.randomUUID()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('resumes')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('resumes')
+        .getPublicUrl(filePath);
+
+      // Parse resume using Edge Function
+      const { data: parsedData, error: parseError } = await supabase.functions.invoke(
+        'parse-resume',
+        {
+          body: { resumeUrl: publicUrl },
+        }
+      );
+
+      if (parseError) throw parseError;
+
+      return {
+        job_id: jobId,
+        applicant_id: userId,
+        resume_url: publicUrl,
+        status: "pending" as ApplicationStatus,
+        parsed_data: parsedData.data,
+      };
+    } catch (error) {
+      console.error('Error processing resume:', error);
+      throw error;
     }
   };
 
@@ -72,6 +114,9 @@ const MassApplier = () => {
 
     try {
       setIsUploading(true);
+      setProgress(0);
+      setProcessedCount(0);
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate("/auth");
@@ -79,39 +124,49 @@ const MassApplier = () => {
       }
 
       const userId = session.user.id;
+      const files = Array.from(selectedFiles);
+      const batchSize = 5; // Process 5 files concurrently
       const applications = [];
+      
+      // Process files in batches
+      for (let i = 0; i < files.length; i += batchSize) {
+        const batch = files.slice(i, i + batchSize);
+        const batchPromises = batch.map(file => 
+          processResume(file, userId, selectedJob)
+            .then(application => {
+              setProcessedCount(prev => {
+                const newCount = prev + 1;
+                setProgress((newCount / files.length) * 100);
+                return newCount;
+              });
+              return application;
+            })
+            .catch(error => {
+              console.error(`Error processing ${file.name}:`, error);
+              toast.error(`Failed to process ${file.name}`);
+              return null;
+            })
+        );
 
-      for (const file of Array.from(selectedFiles)) {
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${userId}/${crypto.randomUUID()}.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('resumes')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('resumes')
-          .getPublicUrl(filePath);
-
-        applications.push({
-          job_id: selectedJob,
-          applicant_id: userId,
-          resume_url: publicUrl,
-          status: "pending" as ApplicationStatus,
-        });
+        const batchResults = await Promise.all(batchPromises);
+        applications.push(...batchResults.filter(Boolean));
       }
 
-      const { error: applicationError } = await supabase
-        .from("applications")
-        .insert(applications);
+      if (applications.length > 0) {
+        const { error: applicationError } = await supabase
+          .from("applications")
+          .insert(applications);
 
-      if (applicationError) throw applicationError;
+        if (applicationError) throw applicationError;
 
-      toast.success(`Successfully submitted ${applications.length} applications!`);
+        toast.success(`Successfully submitted ${applications.length} applications!`);
+      }
+
       setSelectedFiles(null);
       setSelectedJob(null);
+      setProgress(0);
+      setProcessedCount(0);
+      setTotalFiles(0);
     } catch (error) {
       toast.error("Failed to submit applications");
       console.error(error);
@@ -133,10 +188,19 @@ const MassApplier = () => {
             multiple
             onChange={handleFileChange}
             className="cursor-pointer mb-4"
+            disabled={isUploading}
           />
           <p className="text-sm text-gray-500 mb-2">
             Selected: {selectedFiles ? selectedFiles.length : 0} resumes
           </p>
+          {isUploading && (
+            <div className="space-y-2">
+              <Progress value={progress} className="w-full" />
+              <p className="text-sm text-gray-600">
+                Processing: {processedCount} of {totalFiles} resumes
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-between items-center mb-6">
@@ -146,7 +210,7 @@ const MassApplier = () => {
             disabled={!selectedJob || !selectedFiles || isUploading}
           >
             {isUploading 
-              ? "Uploading..." 
+              ? `Processing ${processedCount}/${totalFiles} Resumes...`
               : `Apply with ${selectedFiles?.length || 0} Resumes`
             }
           </Button>
