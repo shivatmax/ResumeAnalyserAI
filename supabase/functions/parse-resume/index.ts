@@ -64,10 +64,11 @@ serve(async (req) => {
     const formData = new FormData()
     const blob = new Blob([fileData], { type: 'application/pdf' })
     formData.append('files', blob, 'resume.pdf')
+    formData.append('strategy', 'hi_res')
 
-    // Updated Unstructured API endpoint and parameters
+    // Send request to Unstructured API
     console.log('Sending request to Unstructured API...')
-    const unstructuredResponse = await fetch('https://api.unstructured.io/general/v0.2.0/partition', {
+    const unstructuredResponse = await fetch('https://api.unstructured.io/general/v0.2.0/general', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
