@@ -77,15 +77,19 @@ const JobSeeker = () => {
       const fileExt = selectedFile.name.split('.').pop();
       const filePath = `${userId}/${crypto.randomUUID()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
+      // Upload file to Supabase Storage
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('resumes')
         .upload(filePath, selectedFile);
 
       if (uploadError) throw uploadError;
 
+      // Get the public URL for the uploaded file
       const { data: { publicUrl } } = supabase.storage
         .from('resumes')
         .getPublicUrl(filePath);
+
+      console.log('Resume URL:', publicUrl);
 
       // Parse resume using Edge Function
       const { data: parsedData, error: parseError } = await supabase.functions
@@ -93,8 +97,12 @@ const JobSeeker = () => {
           body: { resumeUrl: publicUrl },
         });
 
-      if (parseError) throw parseError;
+      if (parseError) {
+        console.error('Parse error:', parseError);
+        throw parseError;
+      }
 
+      // Save application to database
       const { error: applicationError } = await supabase.from("applications").insert({
         job_id: selectedJobId,
         applicant_id: userId,
@@ -110,8 +118,8 @@ const JobSeeker = () => {
       setSelectedJobId(null);
       setDialogOpen(false);
     } catch (error) {
+      console.error('Application error:', error);
       toast.error("Failed to submit application");
-      console.error(error);
     } finally {
       setIsUploading(false);
     }

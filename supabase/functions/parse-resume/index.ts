@@ -6,25 +6,41 @@ const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
     const { resumeUrl } = await req.json()
     console.log('Processing resume URL:', resumeUrl)
 
-    // Download resume content
-    const response = await fetch(resumeUrl)
+    if (!resumeUrl) {
+      throw new Error('Resume URL is required')
+    }
+
+    // Download resume content with proper headers
+    const response = await fetch(resumeUrl, {
+      headers: {
+        'Accept': 'application/pdf',
+      }
+    })
+
     if (!response.ok) {
+      console.error('Failed to fetch resume:', {
+        status: response.status,
+        statusText: response.statusText,
+        url: resumeUrl
+      })
       throw new Error(`Failed to fetch resume: ${response.statusText}`)
     }
+
     const blob = await response.blob()
-    console.log('Successfully downloaded resume')
+    console.log('Successfully downloaded resume, size:', blob.size)
 
     // Parse resume with Unstructured
     const formData = new FormData()
     formData.append('files', blob, 'resume.pdf')
 
+    console.log('Sending request to Unstructured API...')
     const unstructuredResponse = await fetch('https://api.unstructured.io/general/v0.2.0/general', {
       method: 'POST',
       headers: {
@@ -35,6 +51,10 @@ serve(async (req) => {
     })
 
     if (!unstructuredResponse.ok) {
+      console.error('Unstructured API error:', {
+        status: unstructuredResponse.status,
+        statusText: unstructuredResponse.statusText
+      })
       throw new Error(`Unstructured API error: ${unstructuredResponse.statusText}`)
     }
 
@@ -42,6 +62,7 @@ serve(async (req) => {
     console.log('Unstructured API response:', JSON.stringify(parsedData))
 
     // Structure data with OpenAI
+    console.log('Sending request to OpenAI API...')
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -49,7 +70,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-3.5-turbo",
         messages: [{
           role: "system",
           content: "Extract structured information from this resume text. Return a JSON object with the following fields: fullName, email, phone, education (array), experience (array), skills (array)."
@@ -63,6 +84,7 @@ serve(async (req) => {
 
     if (!openAIResponse.ok) {
       const errorData = await openAIResponse.json()
+      console.error('OpenAI API error:', errorData)
       throw new Error(`OpenAI API error: ${JSON.stringify(errorData)}`)
     }
 
