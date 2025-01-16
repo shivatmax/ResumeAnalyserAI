@@ -1,13 +1,18 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const JobSeeker = () => {
   const navigate = useNavigate();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -36,26 +41,66 @@ const JobSeeker = () => {
     },
   });
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type !== "application/pdf") {
+        toast.error("Please upload a PDF file");
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
   const handleApply = async (jobId: string) => {
+    setSelectedJobId(jobId);
+  };
+
+  const handleSubmitApplication = async () => {
+    if (!selectedFile || !selectedJobId) {
+      toast.error("Please select a resume to upload");
+      return;
+    }
+
     try {
+      setIsUploading(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate("/auth");
         return;
       }
 
-      const { error } = await supabase.from("applications").insert({
-        job_id: jobId,
-        applicant_id: session.user.id,
-        resume_url: "placeholder", // You'll need to implement file upload
+      const userId = session.user.id;
+      const fileExt = selectedFile.name.split('.').pop();
+      const filePath = `${userId}/${crypto.randomUUID()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('resumes')
+        .upload(filePath, selectedFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('resumes')
+        .getPublicUrl(filePath);
+
+      const { error: applicationError } = await supabase.from("applications").insert({
+        job_id: selectedJobId,
+        applicant_id: userId,
+        resume_url: publicUrl,
         status: "pending",
       });
 
-      if (error) throw error;
+      if (applicationError) throw applicationError;
+
       toast.success("Application submitted successfully!");
+      setSelectedFile(null);
+      setSelectedJobId(null);
     } catch (error) {
       toast.error("Failed to submit application");
       console.error(error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -71,7 +116,30 @@ const JobSeeker = () => {
             <p className="text-gray-600 mb-2">{job.company_name}</p>
             <p className="text-sm mb-2">{job.location}</p>
             <p className="text-sm mb-4">{job.employment_type}</p>
-            <Button onClick={() => handleApply(job.id)}>Apply Now</Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button onClick={() => handleApply(job.id)}>Apply Now</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Upload Your Resume</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Input
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileChange}
+                    className="cursor-pointer"
+                  />
+                  <Button 
+                    onClick={handleSubmitApplication}
+                    disabled={!selectedFile || isUploading}
+                  >
+                    {isUploading ? "Uploading..." : "Submit Application"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </Card>
         ))}
       </div>
