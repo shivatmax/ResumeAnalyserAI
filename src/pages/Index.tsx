@@ -1,6 +1,13 @@
 import { motion } from 'framer-motion';
 import RoleCard from '@/components/RoleCard';
-import { Building2, Github, UserCircle2, Users, Sparkles, ArrowRight } from 'lucide-react';
+import {
+  Building2,
+  Github,
+  UserCircle2,
+  Users,
+  Sparkles,
+  ArrowRight,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
@@ -25,12 +32,12 @@ const Index = () => {
     <div className='min-h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-purple-50 to-blue-50'>
       {/* Header */}
       <header className='w-full max-w-7xl mx-auto flex justify-between items-center p-6 relative z-10'>
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className='text-3xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent'
         >
-          JobMatch
+          Resume Analyser Ai
         </motion.h1>
         <nav className='hidden md:flex space-x-6'>
           <motion.a
@@ -65,7 +72,7 @@ const Index = () => {
         {/* Background Decorations */}
         <div className='absolute top-0 left-0 w-64 h-64 bg-primary/10 rounded-full filter blur-3xl -translate-x-1/2 -translate-y-1/2' />
         <div className='absolute bottom-0 right-0 w-96 h-96 bg-secondary/10 rounded-full filter blur-3xl translate-x-1/2 translate-y-1/2' />
-        
+
         <div className='max-w-7xl mx-auto px-6 py-12'>
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -83,7 +90,10 @@ const Index = () => {
             </motion.div>
             <h1 className='text-5xl md:text-6xl font-display font-bold text-gray-900 mb-6'>
               Connecting Talent with
-              <span className='bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent'> Opportunity</span>
+              <span className='bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent'>
+                {' '}
+                Opportunity
+              </span>
             </h1>
             <p className='text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed'>
               Choose your role and start your journey towards success
@@ -164,7 +174,7 @@ const Index = () => {
             transition={{ delay: 0.5 }}
             className='mt-4 md:mt-0 text-sm text-gray-500'
           >
-            © 2024 JobMatch. All rights reserved.
+            © 2024 Resume Analyser Ai. All rights reserved.
           </motion.div>
         </div>
       </footer>

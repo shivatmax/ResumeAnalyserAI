@@ -1,8 +1,8 @@
-# JobMatch - Innovative Approach to Job Application Processing
+# Resume Analyser Ai - Innovative Approach to Job Application Processing
 
 ## Project Overview & Approach
 
-JobMatch represents a novel solution to the challenges in modern job application processes. Our approach focuses on leveraging cutting-edge AI technologies to create a more efficient and accurate job matching system.
+Resume Analyser Ai represents a novel solution to the challenges in modern job application processes. Our approach focuses on leveraging cutting-edge AI technologies to create a more efficient and accurate Resume Analyser Aiing system.
 
 ### Core Innovation: AI-Powered Processing
 
@@ -55,8 +55,8 @@ The platform's foundation rests on three key AI implementations:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/jobmatch.git
-   cd jobmatch
+   git clone https://github.com/yourusername/Resume Analyser Ai.git
+   cd Resume Analyser Ai
    ```
 
 2. Install dependencies:
