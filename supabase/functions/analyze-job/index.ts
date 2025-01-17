@@ -69,12 +69,6 @@ Please provide a structured response but in text format with:
 - Location/remote work requirements
 - Language proficiency needs
 
-5. Scoring Rubric (Total 100 points)
-- Experience (0-35 points): Break down scoring for years and relevance
-- Education (0-20 points): Break down by degree level and field relevance  
-- Technical Skills (0-30 points): Break down for must-have vs nice-to-have skills
-- Soft Skills (0-15 points): Break down for communication, teamwork, etc.
-
 Please be specific and quantitative in your analysis while maintaining flexibility where appropriate. 
 There must not be any ambiguity in the response. 
 Never Greet or say anything else just the structured response.`,

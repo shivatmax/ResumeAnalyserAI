@@ -114,6 +114,9 @@ const JobSeeker = () => {
 
       if (jobError) throw jobError;
 
+      console.log(jobData.ai_analysis);
+      console.log(parsedData.data);
+
       // Score the application
       const { data: scoringResult, error: scoringError } =
         await supabase.functions.invoke('score-application', {

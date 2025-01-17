@@ -72,26 +72,28 @@ const MassApplier = () => {
       const fileExt = file.name.split('.').pop();
       const filePath = `${userId}/${crypto.randomUUID()}.${fileExt}`;
 
+      // Upload resume
       const { error: uploadError } = await supabase.storage
         .from('resumes')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) throw new Error(`Upload error: ${uploadError.message}`);
 
       const {
         data: { publicUrl },
       } = supabase.storage.from('resumes').getPublicUrl(filePath);
 
       // Parse resume using Edge Function
-      const { data: parsedData, error: parseError } =
+      const { data: parsedResponse, error: parseError } =
         await supabase.functions.invoke('parse-resume', {
           body: { resumeUrl: publicUrl },
         });
 
-      console.log('Parsed data:', parsedData);
-      console.log('Parse error:', parseError);
-
-      if (parseError) throw parseError;
+      if (parseError || !parsedResponse?.data) {
+        throw new Error(
+          `Parse error: ${parseError?.message || 'No parsed data received'}`
+        );
+      }
 
       // Get job analysis data
       const { data: jobData, error: jobError } = await supabase
@@ -100,26 +102,35 @@ const MassApplier = () => {
         .eq('id', jobId)
         .single();
 
-      if (jobError) throw jobError;
-      console.log('Job data:', jobData);
+      if (jobError || !jobData?.ai_analysis) {
+        throw new Error(
+          `Job data error: ${jobError?.message || 'No job analysis found'}`
+        );
+      }
 
       // Score the application
       const { data: scoringResult, error: scoringError } =
         await supabase.functions.invoke('score-application', {
           body: {
             jobAnalysis: jobData.ai_analysis,
-            resumeData: parsedData.data,
+            resumeData: parsedResponse.data,
           },
         });
 
-      if (scoringError) throw scoringError;
+      if (scoringError || !scoringResult) {
+        throw new Error(
+          `Scoring error: ${
+            scoringError?.message || 'No scoring result received'
+          }`
+        );
+      }
 
       return {
         job_id: jobId,
         applicant_id: userId,
         resume_url: publicUrl,
         status: 'pending' as ApplicationStatus,
-        parsed_data: parsedData.data,
+        parsed_data: parsedResponse.data,
         score: scoringResult.overall_score,
         scoring_breakdown: scoringResult.scoring_breakdown,
         strengths: scoringResult.analysis.strengths,
@@ -127,8 +138,10 @@ const MassApplier = () => {
         recommendation: scoringResult.recommendation,
       };
     } catch (error) {
-      console.error('Error processing resume:', error);
-      throw error;
+      console.error(`Error processing resume ${file.name}:`, error);
+      throw new Error(
+        `Failed to process resume ${file.name}: ${error.message}`
+      );
     }
   };
 
@@ -158,33 +171,50 @@ const MassApplier = () => {
 
       const userId = session.user.id;
       const files = Array.from(selectedFiles);
-      const batchSize = 5; // Process 5 files concurrently
+      const batchSize = 3; // Reduced batch size for better reliability
       const applications = [];
+      const totalFiles = files.length;
 
-      // Process files in batches
+      // Process files in sequential batches
       for (let i = 0; i < files.length; i += batchSize) {
         const batch = files.slice(i, i + batchSize);
-        const batchPromises = batch.map((file) =>
-          processResume(file, userId, selectedJob)
-            .then((application) => {
+        const batchResults = [];
+
+        // Process each file in the batch sequentially
+        for (const file of batch) {
+          try {
+            const result = await processResume(file, userId, selectedJob);
+            if (result) {
+              batchResults.push(result);
+              // Update progress after each successful processing
               setProcessedCount((prev) => {
                 const newCount = prev + 1;
-                setProgress((newCount / files.length) * 100);
+                setProgress((newCount / totalFiles) * 100);
                 return newCount;
               });
-              return application;
-            })
-            .catch((error) => {
-              console.error(`Error processing ${file.name}:`, error);
-              toast.error(`Failed to process ${file.name}`);
-              return null;
-            })
-        );
+            }
+          } catch (error) {
+            console.error(`Error processing ${file.name}:`, error);
+            toast.error(`Failed to process ${file.name}: ${error.message}`);
+            // Continue with next file even if current one fails
+            setProcessedCount((prev) => {
+              const newCount = prev + 1;
+              setProgress((newCount / totalFiles) * 100);
+              return newCount;
+            });
+          }
+        }
 
-        const batchResults = await Promise.all(batchPromises);
-        applications.push(...batchResults.filter(Boolean));
+        // Add successful results to applications array
+        if (batchResults.length > 0) {
+          applications.push(...batchResults);
+        }
+
+        // Optional: Add a small delay between batches to prevent rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
+      // Submit all successful applications to database
       if (applications.length > 0) {
         const { error: applicationError } = await supabase
           .from('applications')
@@ -193,18 +223,21 @@ const MassApplier = () => {
         if (applicationError) throw applicationError;
 
         toast.success(
-          `Successfully submitted ${applications.length} applications!`
+          `Successfully submitted ${applications.length} out of ${totalFiles} applications!`
         );
+      } else {
+        toast.error('No applications were processed successfully');
       }
 
+      // Reset form state
       setSelectedFiles(null);
       setSelectedJob(null);
       setProgress(0);
       setProcessedCount(0);
       setTotalFiles(0);
     } catch (error) {
+      console.error('Failed to submit applications:', error);
       toast.error('Failed to submit applications');
-      console.error(error);
     } finally {
       setIsUploading(false);
     }
