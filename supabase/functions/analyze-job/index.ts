@@ -1,11 +1,12 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import 'https://deno.land/x/xhr@0.1.0/mod.ts';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
@@ -16,7 +17,7 @@ serve(async (req) => {
 
   try {
     const { jobData } = await req.json();
-    
+
     if (!jobData) {
       throw new Error('No job data provided');
     }
@@ -26,7 +27,7 @@ serve(async (req) => {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        Authorization: `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -34,18 +35,52 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert at analyzing job descriptions and extracting key information in a structured format for scoring candidates.'
+            content: `You are an expert AI recruiter specializing in analyzing job postings and creating standardized candidate evaluation criteria. Your task is to carefully analyze job requirements and create clear, structured evaluation guidelines.`,
           },
           {
             role: 'user',
-            content: `Please analyze this job information and extract key details for scoring candidates. 
-            Job Title: ${jobData.title}
-            Job Description: ${jobData.description}
-            Additional Info: ${jobData.additional_info || ''}
-            Required Skills: ${jobData.skills.join(', ')}`
-          }
+            content: `Please analyze this job posting and create detailed candidate evaluation criteria:
+
+Job Title: ${jobData.title}
+Job Description: ${jobData.description}
+Additional Info: ${jobData.additional_info || ''}
+Required Skills: ${jobData.skills.join(', ')}
+
+Please provide a structured response with:
+
+1. Experience Requirements
+- Years of experience needed
+- Type of experience required
+- Specific domain expertise
+
+2. Education Requirements  
+- Minimum degree level
+- Relevant fields of study
+- Any certifications needed
+
+3. Technical Skills
+- Must-have technical skills
+- Nice-to-have technical skills
+- Technology stack requirements
+
+4. Soft Skills & Other Requirements
+- Communication requirements
+- Team collaboration abilities
+- Location/remote work requirements
+- Language proficiency needs
+
+5. Scoring Rubric (Total 100 points)
+- Experience (0-35 points): Break down scoring for years and relevance
+- Education (0-20 points): Break down by degree level and field relevance  
+- Technical Skills (0-30 points): Break down for must-have vs nice-to-have skills
+- Soft Skills (0-15 points): Break down for communication, teamwork, etc.
+
+Please be specific and quantitative in your analysis while maintaining flexibility where appropriate. 
+There must not be any ambiguity in the response. 
+Never Greet or say anything else just the structured response.`,
+          },
         ],
-        temperature: 0.7,
+        temperature: 0.1,
         max_tokens: 1000,
       }),
     });
@@ -63,32 +98,19 @@ serve(async (req) => {
       throw new Error('Invalid response format from OpenAI');
     }
 
-    const analysis = {
-      required_skills: data.choices[0].message.content.match(/\b\w+\b/g) || [],
-      experience_requirements: {
-        minimum_years: parseInt(data.choices[0].message.content.match(/\d+/)?.[0] || '0'),
-        level: jobData.experience_level.toUpperCase()
-      },
-      education_requirements: jobData.education_requirements || 'Not specified',
-      key_responsibilities: data.choices[0].message.content.split('\n').filter(line => line.trim()),
-      scoring_criteria: {
-        technical_skills_weight: 0.4,
-        experience_weight: 0.3,
-        education_weight: 0.3
-      }
-    };
+    const analysis = data.choices[0].message.content;
 
-    return new Response(JSON.stringify(analysis), {
+    return new Response(analysis, {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-
   } catch (error) {
     console.error('Error in analyze-job function:', error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error.message,
-        details: error.stack 
-      }), {
+        details: error.stack,
+      }),
+      {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
