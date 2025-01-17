@@ -87,19 +87,15 @@ const JobSeeker = () => {
       const fileExt = selectedFile.name.split('.').pop();
       const filePath = `${userId}/${crypto.randomUUID()}.${fileExt}`;
 
-      // Upload file to Supabase Storage
-      const { error: uploadError, data: uploadData } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('resumes')
         .upload(filePath, selectedFile);
 
       if (uploadError) throw uploadError;
 
-      // Get the public URL for the uploaded file
       const {
         data: { publicUrl },
       } = supabase.storage.from('resumes').getPublicUrl(filePath);
-
-      console.log('Resume URL:', publicUrl);
 
       // Parse resume using Edge Function
       const { data: parsedData, error: parseError } =
@@ -107,9 +103,29 @@ const JobSeeker = () => {
           body: { resumeUrl: publicUrl },
         });
 
-      if (parseError) {
-        console.error('Parse error:', parseError);
-        throw parseError;
+      if (parseError) throw parseError;
+
+      // Get job analysis data
+      const { data: jobData, error: jobError } = await supabase
+        .from('jobs')
+        .select('ai_analysis')
+        .eq('id', selectedJobId)
+        .single();
+
+      if (jobError) throw jobError;
+
+      // Score the application
+      const { data: scoringResult, error: scoringError } =
+        await supabase.functions.invoke('score-application', {
+          body: {
+            jobAnalysis: jobData.ai_analysis,
+            resumeData: parsedData.data,
+          },
+        });
+
+      if (scoringError) {
+        console.error('Scoring error:', scoringError);
+        // Continue with application submission even if scoring fails
       }
 
       // Save application to database
@@ -121,6 +137,7 @@ const JobSeeker = () => {
           resume_url: publicUrl,
           status: 'pending',
           parsed_data: parsedData.data,
+          score: scoringResult?.overallScore || null,
         });
 
       if (applicationError) throw applicationError;
