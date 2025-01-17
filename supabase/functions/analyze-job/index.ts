@@ -27,11 +27,11 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert at analyzing job descriptions and extracting key information in a structured format.'
+            content: 'You are an expert at analyzing job descriptions and extracting key information in a structured format for scoring candidates.'
           },
           {
             role: 'user',
-            content: `Please analyze this job information and extract key details: ${JSON.stringify(jobData)}`
+            content: `Please analyze this job information and extract key details for scoring candidates. Job Description: ${jobData.description}, Additional Info: ${jobData.additional_info || ''}, Required Skills: ${jobData.skills.join(', ')}`
           }
         ],
         response_format: {
@@ -41,20 +41,34 @@ serve(async (req) => {
             properties: {
               required_skills: {
                 type: "array",
-                items: { type: "string" }
+                items: { type: "string" },
+                description: "List of required technical skills"
               },
               experience_requirements: {
                 type: "object",
                 properties: {
                   minimum_years: { type: "number" },
-                  level: { type: "string",
+                  level: { 
+                    type: "string",
                     enum: ["ENTRY", "MID", "SENIOR", "EXECUTIVE"]
                   }
                 }
               },
-              education_requirements: { type: "string" }
+              education_requirements: { type: "string" },
+              key_responsibilities: {
+                type: "array",
+                items: { type: "string" }
+              },
+              scoring_criteria: {
+                type: "object",
+                properties: {
+                  technical_skills_weight: { type: "number" },
+                  experience_weight: { type: "number" },
+                  education_weight: { type: "number" }
+                }
+              }
             },
-            required: ["required_skills", "experience_requirements", "education_requirements"]
+            required: ["required_skills", "experience_requirements", "education_requirements", "key_responsibilities", "scoring_criteria"]
           }
         }
       }),

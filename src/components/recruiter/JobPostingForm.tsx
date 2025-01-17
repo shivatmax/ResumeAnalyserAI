@@ -13,9 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 
 type EmploymentType = Database["public"]["Enums"]["employment_type"];
 type ExperienceLevel = Database["public"]["Enums"]["experience_level"];
@@ -37,7 +36,7 @@ type FormData = {
 
 export const JobPostingForm = () => {
   const navigate = useNavigate();
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentSkill, setCurrentSkill] = useState("");
   const [formData, setFormData] = useState<FormData>({
     title: "",
@@ -71,50 +70,41 @@ export const JobPostingForm = () => {
     }));
   };
 
-  const analyzeJobDescription = async () => {
-    setIsAnalyzing(true);
-    try {
-      const response = await supabase.functions.invoke('analyze-job', {
-        body: { jobData: formData }
-      });
-
-      if (response.error) throw new Error('Failed to analyze job description');
-
-      const analysis = response.data;
-      setFormData(prev => ({
-        ...prev,
-        skills: [...new Set([...prev.skills, ...analysis.required_skills])],
-        experience_level: analysis.experience_requirements.level.toLowerCase() as ExperienceLevel,
-        education_requirements: analysis.education_requirements,
-      }));
-
-      toast.success("Job description analyzed successfully!");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to analyze job description");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No session");
 
-      const { error } = await supabase.from("jobs").insert({
+      // First, create the job posting
+      const { data: jobData, error: jobError } = await supabase.from("jobs").insert({
         ...formData,
         recruiter_id: session.user.id,
+      }).select().single();
+
+      if (jobError) throw jobError;
+
+      // Then, analyze the job with AI
+      const { error: analysisError } = await supabase.functions.invoke('analyze-job', {
+        body: { jobData: formData }
       });
 
-      if (error) throw error;
-      
-      toast.success("Job posted successfully!");
+      if (analysisError) {
+        console.error('AI Analysis error:', analysisError);
+        // Don't throw here, as the job is already posted
+        toast.error("Job posted successfully, but there was an error during AI analysis");
+      } else {
+        toast.success("Job posted successfully!");
+      }
+
       navigate("/recruiter/jobs");
     } catch (error) {
-      toast.error("Failed to post job");
       console.error(error);
+      toast.error("Failed to post job");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -142,23 +132,6 @@ export const JobPostingForm = () => {
         required
         className="min-h-[200px]"
       />
-
-      <Button 
-        type="button" 
-        onClick={analyzeJobDescription}
-        disabled={isAnalyzing || !formData.description}
-        variant="outline"
-        className="w-full"
-      >
-        {isAnalyzing ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Analyzing...
-          </>
-        ) : (
-          "Analyze with AI"
-        )}
-      </Button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Input
@@ -264,7 +237,16 @@ export const JobPostingForm = () => {
         className="min-h-[100px]"
       />
 
-      <Button type="submit" className="w-full">Post Job</Button>
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Posting Job...
+          </>
+        ) : (
+          "Post Job"
+        )}
+      </Button>
     </form>
   );
 };
