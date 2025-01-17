@@ -11,7 +11,16 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileUp, Briefcase, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  Upload,
+  FileUp,
+  Briefcase,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  MapPin,
+  Loader2,
+} from 'lucide-react';
 
 type ApplicationStatus = Database['public']['Enums']['application_status'];
 
@@ -247,95 +256,93 @@ const MassApplier = () => {
 
   if (isLoading)
     return (
-      <div className='flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 via-white to-orange-50'>
-        <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent" />
+      <div className='flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-orange-50'>
+        <div className='h-16 w-16 animate-spin rounded-full border-4 border-primary border-t-transparent' />
       </div>
     );
 
   return (
-    <div className='min-h-screen overflow-hidden bg-gradient-to-br from-purple-50 via-white to-orange-50'>
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+    <div className='container mx-auto p-6 overflow-hidden'>
+      <motion.h1
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className='container mx-auto p-6 space-y-8'
+        className='text-4xl font-display font-bold mb-8 bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'
       >
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className='bg-white/80 backdrop-blur-lg rounded-xl shadow-lg overflow-hidden'
-        >
-          <div className='p-6 space-y-4'>
-            <div className='flex items-center gap-3 mb-4'>
-              <Upload className='w-8 h-8 text-primary animate-bounce' />
-              <h2 className='text-2xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent'>
+        Mass Apply
+      </motion.h1>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className='space-y-8'
+      >
+        <Card className='p-8 backdrop-blur-sm border border-gray-200/50 hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white/50 to-transparent'>
+          <div className='space-y-4'>
+            <div className='flex items-center space-x-3'>
+              <Upload className='w-6 h-6 text-primary' />
+              <h2 className='text-xl font-display font-semibold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent'>
                 Upload Multiple Resumes
               </h2>
             </div>
-            <div className='relative group'>
+
+            <div className='relative'>
               <Input
                 type='file'
                 accept='.pdf'
                 multiple
                 onChange={handleFileChange}
-                className='cursor-pointer mb-4 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-dark'
+                className='cursor-pointer bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
                 disabled={isUploading}
               />
-              <div className='absolute inset-0 bg-gradient-to-r from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-lg' />
+              <Upload className='absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
             </div>
-            <p className='text-sm text-gray-500 mb-2 flex items-center gap-2'>
+
+            <p className='flex items-center space-x-2 text-gray-600'>
               <FileUp className='w-4 h-4' />
-              Selected: {selectedFiles ? selectedFiles.length : 0} resumes
+              <span className='text-sm'>
+                Selected: {selectedFiles ? selectedFiles.length : 0} resumes
+              </span>
             </p>
+
             {isUploading && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className='space-y-2'
               >
-                <Progress
-                  value={progress}
-                  className='h-2 bg-gray-100'
-                />
-                <p className='text-sm text-gray-600 flex items-center gap-2'>
-                  <span className='animate-pulse'>
-                    <CheckCircle2 className='w-4 h-4 text-primary' />
+                <Progress value={progress} />
+                <p className='flex items-center space-x-2 text-gray-600'>
+                  <CheckCircle2 className='w-4 h-4 text-primary animate-pulse' />
+                  <span className='text-sm'>
+                    Processing: {processedCount} of {totalFiles} resumes
                   </span>
-                  Processing: {processedCount} of {totalFiles} resumes
                 </p>
               </motion.div>
             )}
-          </div>
-        </motion.div>
 
-        <div className='flex justify-between items-center mb-6 bg-white/80 backdrop-blur-lg rounded-lg p-4 shadow-lg'>
-          <div className='flex items-center gap-3'>
-            <Briefcase className='w-8 h-8 text-primary' />
-            <h1 className='text-3xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent'>
-              Select a Job
-            </h1>
-          </div>
-          <Button
-            onClick={handleMassApply}
-            disabled={!selectedJob || !selectedFiles || isUploading}
-            className='group relative overflow-hidden hover:shadow-xl transition-all duration-300'
-          >
-            <span className='relative z-10 flex items-center gap-2'>
+            <Button
+              onClick={handleMassApply}
+              disabled={!selectedJob || !selectedFiles || isUploading}
+              className='w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white'
+            >
               {isUploading ? (
-                <>
-                  <span className='animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent' />
+                <motion.div
+                  className='flex items-center'
+                  animate={{ opacity: [1, 0.5, 1] }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                >
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                   Processing {processedCount}/{totalFiles} Resumes...
-                </>
+                </motion.div>
               ) : (
-                <>
-                  <Upload className='w-5 h-5' />
+                <div className='flex items-center justify-center'>
+                  <Upload className='mr-2 h-4 w-4' />
                   Apply with {selectedFiles?.length || 0} Resumes
-                </>
+                </div>
               )}
-            </span>
-            <div className='absolute inset-0 bg-gradient-to-r from-primary-light via-primary to-primary-dark opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
-          </Button>
-        </div>
+            </Button>
+          </div>
+        </Card>
 
         <RadioGroup
           value={selectedJob || ''}
@@ -343,13 +350,14 @@ const MassApplier = () => {
           className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
         >
           <AnimatePresence>
-            {jobs?.map((job, index) => (
+            {jobs?.map((job) => (
               <motion.div
                 key={job.id}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                className='relative'
+                exit={{ opacity: 0, scale: 0.9 }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                className='overflow-hidden'
               >
                 <RadioGroupItem
                   value={job.id}
@@ -358,18 +366,32 @@ const MassApplier = () => {
                 />
                 <Label
                   htmlFor={job.id}
-                  className='flex flex-col p-6 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg cursor-pointer border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 peer-data-[state=checked]:border-primary peer-data-[state=checked]:shadow-primary/20'
+                  className='block cursor-pointer'
                 >
-                  <h2 className='text-xl font-semibold text-gray-900 mb-2'>{job.title}</h2>
-                  <p className='text-primary font-medium mb-2'>{job.company_name}</p>
-                  <p className='text-sm text-gray-600 mb-2 flex items-center gap-2'>
-                    <AlertCircle className='w-4 h-4' />
-                    {job.location}
-                  </p>
-                  <p className='text-sm text-gray-600 mb-4'>{job.employment_type}</p>
-                  <div className='absolute top-2 right-2'>
-                    <CheckCircle2 className='w-6 h-6 text-primary opacity-0 peer-data-[state=checked]:opacity-100 transition-opacity duration-300' />
-                  </div>
+                  <Card className='p-8 backdrop-blur-sm border border-gray-200/50 hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white/50 to-transparent peer-data-[state=checked]:border-primary'>
+                    <div className='space-y-4'>
+                      <div className='flex items-center space-x-3'>
+                        <Briefcase className='w-6 h-6 text-primary' />
+                        <h2 className='text-xl font-display font-semibold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent'>
+                          {job.title}
+                        </h2>
+                      </div>
+
+                      <p className='text-lg font-medium text-primary/80'>
+                        {job.company_name}
+                      </p>
+
+                      <div className='flex items-center space-x-2 text-gray-600'>
+                        <MapPin className='w-4 h-4' />
+                        <p className='text-sm'>{job.location}</p>
+                      </div>
+
+                      <div className='flex items-center space-x-2 text-gray-600'>
+                        <Clock className='w-4 h-4' />
+                        <p className='text-sm'>{job.employment_type}</p>
+                      </div>
+                    </div>
+                  </Card>
                 </Label>
               </motion.div>
             ))}

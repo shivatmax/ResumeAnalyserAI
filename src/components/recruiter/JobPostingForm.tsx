@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { X, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 type EmploymentType = Database['public']['Enums']['employment_type'];
 type ExperienceLevel = Database['public']['Enums']['experience_level'];
@@ -98,7 +99,7 @@ export const JobPostingForm = () => {
         .insert({
           ...formData,
           recruiter_id: session.user.id,
-          ai_analysis: aiAnalysisResponse.analysis, // Access the analysis from the response object
+          ai_analysis: aiAnalysisResponse.analysis,
         })
         .select()
         .single();
@@ -116,9 +117,12 @@ export const JobPostingForm = () => {
   };
 
   return (
-    <form
+    <motion.form
       onSubmit={handleSubmit}
       className='space-y-6'
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
     >
       <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
         <Input
@@ -126,6 +130,7 @@ export const JobPostingForm = () => {
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           required
+          className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
         />
         <Input
           placeholder='Company Name'
@@ -134,6 +139,7 @@ export const JobPostingForm = () => {
             setFormData({ ...formData, company_name: e.target.value })
           }
           required
+          className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
         />
       </div>
 
@@ -144,7 +150,7 @@ export const JobPostingForm = () => {
           setFormData({ ...formData, description: e.target.value })
         }
         required
-        className='min-h-[200px]'
+        className='min-h-[200px] bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
       />
 
       <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
@@ -155,6 +161,7 @@ export const JobPostingForm = () => {
             setFormData({ ...formData, location: e.target.value })
           }
           required
+          className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
         />
 
         <Select
@@ -163,7 +170,7 @@ export const JobPostingForm = () => {
             setFormData({ ...formData, employment_type: value })
           }
         >
-          <SelectTrigger>
+          <SelectTrigger className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'>
             <SelectValue placeholder='Employment Type' />
           </SelectTrigger>
           <SelectContent>
@@ -183,6 +190,7 @@ export const JobPostingForm = () => {
           onChange={(e) =>
             setFormData({ ...formData, salary_min: parseInt(e.target.value) })
           }
+          className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
         />
         <Input
           type='number'
@@ -191,6 +199,7 @@ export const JobPostingForm = () => {
           onChange={(e) =>
             setFormData({ ...formData, salary_max: parseInt(e.target.value) })
           }
+          className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
         />
       </div>
 
@@ -200,7 +209,7 @@ export const JobPostingForm = () => {
           setFormData({ ...formData, experience_level: value })
         }
       >
-        <SelectTrigger>
+        <SelectTrigger className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'>
           <SelectValue placeholder='Experience Level' />
         </SelectTrigger>
         <SelectContent>
@@ -217,6 +226,7 @@ export const JobPostingForm = () => {
         onChange={(e) =>
           setFormData({ ...formData, education_requirements: e.target.value })
         }
+        className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
       />
 
       <div className='space-y-2'>
@@ -231,10 +241,12 @@ export const JobPostingForm = () => {
                 handleAddSkill();
               }
             }}
+            className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
           />
           <Button
             type='button'
             onClick={handleAddSkill}
+            className='bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white'
           >
             Add
           </Button>
@@ -244,7 +256,7 @@ export const JobPostingForm = () => {
             <Badge
               key={index}
               variant='secondary'
-              className='flex items-center gap-1'
+              className='flex items-center gap-1 bg-white/50'
             >
               {skill}
               <X
@@ -263,6 +275,7 @@ export const JobPostingForm = () => {
           setFormData({ ...formData, application_deadline: e.target.value })
         }
         required
+        className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
       />
 
       <Textarea
@@ -271,23 +284,27 @@ export const JobPostingForm = () => {
         onChange={(e) =>
           setFormData({ ...formData, additional_info: e.target.value })
         }
-        className='min-h-[100px]'
+        className='min-h-[100px] bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
       />
 
       <Button
         type='submit'
-        className='w-full'
+        className='w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-lg hover:shadow-xl transition-all duration-300'
         disabled={isSubmitting}
       >
         {isSubmitting ? (
-          <>
+          <motion.div
+            className='flex items-center justify-center'
+            animate={{ opacity: [1, 0.5, 1] }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+          >
             <Loader2 className='mr-2 h-4 w-4 animate-spin' />
             Posting Job...
-          </>
+          </motion.div>
         ) : (
           'Post Job'
         )}
       </Button>
-    </form>
+    </motion.form>
   );
 };

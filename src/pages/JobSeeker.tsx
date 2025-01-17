@@ -13,7 +13,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Briefcase, MapPin, Clock, Upload, Send } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 const JobSeeker = () => {
   const navigate = useNavigate();
@@ -114,9 +116,6 @@ const JobSeeker = () => {
 
       if (jobError) throw jobError;
 
-      console.log(jobData.ai_analysis);
-      console.log(parsedData.data);
-
       // Score the application
       const { data: scoringResult, error: scoringError } =
         await supabase.functions.invoke('score-application', {
@@ -128,7 +127,6 @@ const JobSeeker = () => {
 
       if (scoringError) {
         console.error('Scoring error:', scoringError);
-        // Continue with application submission even if scoring fails
       }
 
       // Save application to database
@@ -164,60 +162,120 @@ const JobSeeker = () => {
   if (isLoading)
     return (
       <div className='flex items-center justify-center min-h-screen'>
-        Loading...
+        <Loader2 className='w-8 h-8 animate-spin text-primary' />
       </div>
     );
 
   return (
-    <div className='container mx-auto p-6'>
-      <h1 className='text-3xl font-bold mb-6'>Available Jobs</h1>
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-        {jobs?.map((job) => (
-          <Card
-            key={job.id}
-            className='p-6'
-          >
-            <h2 className='text-xl font-semibold mb-2'>{job.title}</h2>
-            <p className='text-gray-600 mb-2'>{job.company_name}</p>
-            <p className='text-sm mb-2'>{job.location}</p>
-            <p className='text-sm mb-4'>{job.employment_type}</p>
-            <Dialog
-              open={dialogOpen}
-              onOpenChange={setDialogOpen}
+    <div className='container mx-auto p-6 overflow-hidden'>
+      <motion.h1
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className='text-4xl font-display font-bold mb-8 bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'
+      >
+        Available Jobs
+      </motion.h1>
+      <motion.div
+        className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ staggerChildren: 0.1 }}
+      >
+        <AnimatePresence>
+          {jobs?.map((job) => (
+            <motion.div
+              key={job.id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              whileHover={{ y: -5, scale: 1.02 }}
+              className='overflow-hidden'
             >
-              <DialogTrigger asChild>
-                <Button onClick={() => handleApply(job.id)}>Apply Now</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Upload Your Resume</DialogTitle>
-                </DialogHeader>
+              <Card className='p-8 backdrop-blur-sm border border-gray-200/50 hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white/50 to-transparent'>
                 <div className='space-y-4'>
-                  <Input
-                    type='file'
-                    accept='.pdf'
-                    onChange={handleFileChange}
-                    className='cursor-pointer'
-                  />
-                  <Button
-                    onClick={handleSubmitApplication}
-                    disabled={!selectedFile || isUploading}
+                  <div className='flex items-center space-x-3'>
+                    <Briefcase className='w-6 h-6 text-primary' />
+                    <h2 className='text-xl font-display font-semibold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent'>
+                      {job.title}
+                    </h2>
+                  </div>
+
+                  <p className='text-lg font-medium text-primary/80'>
+                    {job.company_name}
+                  </p>
+
+                  <div className='flex items-center space-x-2 text-gray-600'>
+                    <MapPin className='w-4 h-4' />
+                    <p className='text-sm'>{job.location}</p>
+                  </div>
+
+                  <div className='flex items-center space-x-2 text-gray-600'>
+                    <Clock className='w-4 h-4' />
+                    <p className='text-sm'>{job.employment_type}</p>
+                  </div>
+
+                  <Dialog
+                    open={dialogOpen}
+                    onOpenChange={setDialogOpen}
                   >
-                    {isUploading ? (
-                      <>
-                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                        Processing...
-                      </>
-                    ) : (
-                      'Submit Application'
-                    )}
-                  </Button>
+                    <DialogTrigger asChild>
+                      <Button
+                        onClick={() => handleApply(job.id)}
+                        className='w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-lg hover:shadow-xl transition-all duration-300'
+                      >
+                        Apply Now
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className='overflow-hidden backdrop-blur-lg bg-white/90 p-8 border border-gray-200/50'>
+                      <DialogHeader>
+                        <DialogTitle className='text-2xl font-display font-bold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'>
+                          Upload Your Resume
+                        </DialogTitle>
+                      </DialogHeader>
+                      <motion.div
+                        className='space-y-6'
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        <div className='relative'>
+                          <Input
+                            type='file'
+                            accept='.pdf'
+                            onChange={handleFileChange}
+                            className='cursor-pointer bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
+                          />
+                          <Upload className='absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
+                        </div>
+                        <Button
+                          onClick={handleSubmitApplication}
+                          disabled={!selectedFile || isUploading}
+                          className='w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white'
+                        >
+                          {isUploading ? (
+                            <motion.div
+                              className='flex items-center'
+                              animate={{ opacity: [1, 0.5, 1] }}
+                              transition={{ repeat: Infinity, duration: 1.5 }}
+                            >
+                              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                              Processing...
+                            </motion.div>
+                          ) : (
+                            <div className='flex items-center justify-center'>
+                              <Send className='mr-2 h-4 w-4' />
+                              Submit Application
+                            </div>
+                          )}
+                        </Button>
+                      </motion.div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
-              </DialogContent>
-            </Dialog>
-          </Card>
-        ))}
-      </div>
+              </Card>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 };

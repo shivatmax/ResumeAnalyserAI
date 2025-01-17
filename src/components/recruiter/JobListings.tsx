@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, Loader2, Briefcase, MapPin, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import {
@@ -14,6 +14,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 export const JobListings = () => {
   const queryClient = useQueryClient();
@@ -48,7 +50,6 @@ export const JobListings = () => {
 
       if (error) throw error;
 
-      // Invalidate and refetch jobs query
       await queryClient.invalidateQueries({ queryKey: ['recruiter-jobs'] });
 
       toast.success(
@@ -75,19 +76,16 @@ export const JobListings = () => {
         return;
       }
 
-      // Transform data for Excel with serial numbers
       const excelData = applications.map((app, index) => ({
         'S.No.': index + 1,
         'Applicant Score': app.score || 0,
         Resume: {
-          v: app.resume_url, // value
+          v: app.resume_url,
           l: {
-            // hyperlink
             Target: app.resume_url,
             Tooltip: 'Click to open resume',
           },
           s: {
-            // style
             font: { color: { rgb: '0000FF' }, underline: true },
             alignment: { horizontal: 'left' },
           },
@@ -99,33 +97,29 @@ export const JobListings = () => {
         Recommendation: app.recommendation || '',
       }));
 
-      // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(excelData, {
         header: Object.keys(excelData[0]),
       });
 
-      // Set column widths
       const colWidths = [
-        { wch: 5 }, // S.No.
-        { wch: 12 }, // Score
-        { wch: 50 }, // Resume URL
-        { wch: 15 }, // Status
-        { wch: 15 }, // Date
-        { wch: 40 }, // Strengths
-        { wch: 40 }, // Gaps
-        { wch: 40 }, // Recommendation
+        { wch: 5 },
+        { wch: 12 },
+        { wch: 50 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 40 },
+        { wch: 40 },
+        { wch: 40 },
       ];
       ws['!cols'] = colWidths;
 
-      // Add header style
       const headerStyle = {
         font: { bold: true, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '4F46E5' } }, // Indigo color
+        fill: { fgColor: { rgb: '4F46E5' } },
         alignment: { horizontal: 'center' },
       };
 
-      // Apply header styles
       const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
       for (let C = range.s.c; C <= range.e.c; ++C) {
         const address = XLSX.utils.encode_col(C) + '1';
@@ -133,7 +127,6 @@ export const JobListings = () => {
         ws[address].s = headerStyle;
       }
 
-      // Add alternating row colors
       for (let R = 2; R <= range.e.r + 1; ++R) {
         const rowStyle = {
           fill: { fgColor: { rgb: R % 2 ? 'F3F4F6' : 'FFFFFF' } },
@@ -146,10 +139,7 @@ export const JobListings = () => {
         }
       }
 
-      // Add worksheet to workbook
       XLSX.utils.book_append_sheet(wb, ws, 'Applications');
-
-      // Generate Excel file
       XLSX.writeFile(wb, `${jobTitle}-Applications.xlsx`);
 
       toast.success('Applications exported successfully');
@@ -159,89 +149,123 @@ export const JobListings = () => {
     }
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading)
+    return (
+      <div className='flex items-center justify-center min-h-screen'>
+        <Loader2 className='w-8 h-8 animate-spin text-primary' />
+      </div>
+    );
 
   return (
-    <div className='grid grid-cols-1 md:grid-cols-2 gap-8 p-6'>
-      {postedJobs?.map((job) => (
-        <Card
-          key={job.id}
-          className='p-8 cursor-pointer hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white to-gray-50 border border-gray-200'
-          onClick={() => {
-            setSelectedJob(job);
-            setDialogOpen(true);
-          }}
-        >
-          <div className='flex justify-between items-start mb-6'>
-            <h2 className='text-2xl font-bold text-gray-900 font-display tracking-tight'>
-              {job.title}
-            </h2>
-            <div className='flex items-center gap-3'>
-              <Button
-                variant='outline'
-                size='sm'
-                className='hover:bg-gray-100'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleExportToExcel(job.id, job.title);
-                }}
-              >
-                <Download className='w-4 h-4 mr-2 text-gray-600' />
-                Export
-              </Button>
-              <span className='text-sm font-medium text-gray-600'>
-                {job.is_active ? 'Active' : 'Inactive'}
-              </span>
-              <Switch
-                checked={job.is_active}
-                onCheckedChange={() => {
-                  handleToggleActive(job.id, job.is_active);
-                }}
-              />
-            </div>
-          </div>
-          <p className='text-lg font-semibold text-indigo-600 mb-3'>
-            {job.company_name}
-          </p>
-          <p className='text-base text-gray-700 mb-2'>{job.location}</p>
-          <p className='text-base text-gray-700 mb-4'>{job.employment_type}</p>
-          <p className='text-base font-medium text-gray-800 mb-4'>
-            Applications:{' '}
-            <span className='text-indigo-600'>
-              {job.applications?.length || 0}
-            </span>
-          </p>
-          {job.skills && job.skills.length > 0 && (
-            <div className='mt-4'>
-              <p className='text-base font-semibold text-gray-800 mb-3'>
-                Required Skills:
-              </p>
-              <div className='flex flex-wrap gap-2 mt-1'>
-                {job.skills.map((skill, index) => (
-                  <Badge
-                    key={index}
-                    variant='secondary'
-                    className='px-3 py-1 bg-indigo-100 text-indigo-700 font-medium rounded-full'
-                  >
-                    {skill}
-                  </Badge>
-                ))}
+    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6'>
+      <AnimatePresence>
+        {postedJobs?.map((job) => (
+          <motion.div
+            key={job.id}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            className='overflow-hidden'
+          >
+            <Card
+              className='p-8 backdrop-blur-sm border border-gray-200/50 hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white/50 to-transparent'
+              onClick={() => {
+                setSelectedJob(job);
+                setDialogOpen(true);
+              }}
+            >
+              <div className='space-y-4'>
+                <div className='flex items-center space-x-3'>
+                  <Briefcase className='w-6 h-6 text-primary' />
+                  <h2 className='text-xl font-display font-semibold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent'>
+                    {job.title}
+                  </h2>
+                </div>
+
+                <p className='text-lg font-medium text-primary/80'>
+                  {job.company_name}
+                </p>
+
+                <div className='flex items-center space-x-2 text-gray-600'>
+                  <MapPin className='w-4 h-4' />
+                  <p className='text-sm'>{job.location}</p>
+                </div>
+
+                <div className='flex items-center space-x-2 text-gray-600'>
+                  <Clock className='w-4 h-4' />
+                  <p className='text-sm'>{job.employment_type}</p>
+                </div>
+
+                <div className='flex justify-between items-center'>
+                  <p className='text-base font-medium text-gray-800'>
+                    Applications:{' '}
+                    <span className='text-primary'>
+                      {job.applications?.length || 0}
+                    </span>
+                  </p>
+
+                  <div className='flex items-center gap-3'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      className='hover:bg-gray-100'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleExportToExcel(job.id, job.title);
+                      }}
+                    >
+                      <Download className='w-4 h-4 mr-2 text-gray-600' />
+                      Export
+                    </Button>
+                    <Switch
+                      checked={job.is_active}
+                      onCheckedChange={(e) => {
+                        handleToggleActive(job.id, job.is_active);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {job.skills && job.skills.length > 0 && (
+                  <div className='mt-4'>
+                    <p className='text-base font-semibold text-gray-800 mb-3'>
+                      Required Skills:
+                    </p>
+                    <div className='flex flex-wrap gap-2'>
+                      {job.skills.map((skill, index) => (
+                        <Badge
+                          key={index}
+                          variant='secondary'
+                          className='px-3 py-1 bg-indigo-100 text-indigo-700 font-medium rounded-full'
+                        >
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
-        </Card>
-      ))}
+            </Card>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
       <Dialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
       >
-        <DialogContent className='max-w-4xl max-h-[85vh] overflow-y-auto bg-white p-8'>
+        <DialogContent className='overflow-hidden backdrop-blur-lg bg-white/90 p-8 border border-gray-200/50 max-w-4xl max-h-[85vh] overflow-y-auto'>
           <DialogHeader>
-            <DialogTitle className='text-3xl font-display font-bold text-gray-900 mb-6'>
+            <DialogTitle className='text-3xl font-display font-bold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'>
               {selectedJob?.title}
             </DialogTitle>
           </DialogHeader>
-          <div className='space-y-6'>
+          <motion.div
+            className='space-y-6'
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
             <div>
               <h3 className='text-xl font-semibold text-gray-800 mb-3'>
                 Company
@@ -287,7 +311,7 @@ export const JobListings = () => {
                 <h3 className='text-lg font-semibold text-gray-800 mb-2'>
                   Applications
                 </h3>
-                <p className='text-base text-indigo-600 font-medium'>
+                <p className='text-base text-primary font-medium'>
                   {selectedJob?.applications?.length || 0}
                 </p>
               </div>
@@ -320,7 +344,7 @@ export const JobListings = () => {
                 </p>
               </div>
             )}
-          </div>
+          </motion.div>
         </DialogContent>
       </Dialog>
     </div>
