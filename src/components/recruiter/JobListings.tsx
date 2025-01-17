@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
 
 export const JobListings = () => {
   const queryClient = useQueryClient();
@@ -79,17 +78,7 @@ export const JobListings = () => {
       const excelData = applications.map((app, index) => ({
         'S.No.': index + 1,
         'Applicant Score': app.score || 0,
-        Resume: {
-          v: app.resume_url,
-          l: {
-            Target: app.resume_url,
-            Tooltip: 'Click to open resume',
-          },
-          s: {
-            font: { color: { rgb: '0000FF' }, underline: true },
-            alignment: { horizontal: 'left' },
-          },
-        },
+        Resume: app.resume_url,
         'Application Status': app.status,
         'Submission Date': new Date(app.created_at || '').toLocaleDateString(),
         Strengths: app.strengths?.join(', ') || '',
@@ -102,40 +91,103 @@ export const JobListings = () => {
         header: Object.keys(excelData[0]),
       });
 
+      // Column widths
       const colWidths = [
-        { wch: 5 },
-        { wch: 12 },
-        { wch: 50 },
-        { wch: 15 },
-        { wch: 15 },
-        { wch: 40 },
-        { wch: 40 },
-        { wch: 40 },
+        { wch: 5 }, // S.No.
+        { wch: 12 }, // Score
+        { wch: 50 }, // Resume
+        { wch: 15 }, // Status
+        { wch: 15 }, // Date
+        { wch: 40 }, // Strengths
+        { wch: 40 }, // Gaps
+        { wch: 40 }, // Recommendation
       ];
       ws['!cols'] = colWidths;
 
+      // Style the header row
       const headerStyle = {
-        font: { bold: true, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '4F46E5' } },
-        alignment: { horizontal: 'center' },
+        font: {
+          bold: true,
+          color: { rgb: 'FFFFFF' },
+          sz: 12,
+          name: 'Arial',
+        },
+        fill: {
+          fgColor: { rgb: '4F46E5' },
+          patternType: 'solid',
+        },
+        alignment: {
+          horizontal: 'center',
+          vertical: 'center',
+          wrapText: true,
+        },
+        border: {
+          top: { style: 'thin', color: { rgb: '000000' } },
+          bottom: { style: 'thin', color: { rgb: '000000' } },
+          left: { style: 'thin', color: { rgb: '000000' } },
+          right: { style: 'thin', color: { rgb: '000000' } },
+        },
       };
 
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const address = XLSX.utils.encode_col(C) + '1';
-        if (!ws[address]) continue;
-        ws[address].s = headerStyle;
-      }
+      // Style for data cells
+      const dataCellStyle = {
+        font: {
+          name: 'Arial',
+          sz: 11,
+        },
+        alignment: {
+          vertical: 'center',
+          wrapText: true,
+        },
+        border: {
+          top: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          right: { style: 'thin', color: { rgb: 'D1D5DB' } },
+        },
+      };
 
-      for (let R = 2; R <= range.e.r + 1; ++R) {
-        const rowStyle = {
-          fill: { fgColor: { rgb: R % 2 ? 'F3F4F6' : 'FFFFFF' } },
-          alignment: { vertical: 'center' },
-        };
+      // Apply styles to all cells
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let R = range.s.r; R <= range.e.r; ++R) {
         for (let C = range.s.c; C <= range.e.c; ++C) {
-          const address = XLSX.utils.encode_col(C) + R;
-          if (!ws[address]) continue;
-          ws[address].s = { ...ws[address].s, ...rowStyle };
+          const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!ws[cellRef]) continue;
+
+          if (R === 0) {
+            // Header row
+            ws[cellRef].s = headerStyle;
+          } else {
+            // Data rows
+            const rowStyle = {
+              ...dataCellStyle,
+              fill: {
+                fgColor: { rgb: R % 2 ? 'F3F4F6' : 'FFFFFF' },
+                patternType: 'solid',
+              },
+            };
+
+            // Special styling for Score column
+            if (C === 1) {
+              // Score column
+              const score = ws[cellRef].v;
+              rowStyle.font = {
+                ...rowStyle.font,
+              };
+            }
+
+            // Special styling for Status column
+            if (C === 3) {
+              // Status column
+              const status = ws[cellRef].v;
+              rowStyle.font = {
+                name: 'Arial',
+                sz: 11,
+              };
+            }
+
+            ws[cellRef].s = rowStyle;
+          }
         }
       }
 
