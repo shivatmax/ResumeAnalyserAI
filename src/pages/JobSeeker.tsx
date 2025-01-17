@@ -13,9 +13,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Loader2, Briefcase, MapPin, Clock, Upload, Send } from 'lucide-react';
+import {
+  Loader2,
+  Briefcase,
+  MapPin,
+  Clock,
+  Upload,
+  Send,
+  DollarSign,
+  GraduationCap,
+  ListChecks,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
 
 const JobSeeker = () => {
   const navigate = useNavigate();
@@ -23,6 +32,9 @@ const JobSeeker = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -67,6 +79,12 @@ const JobSeeker = () => {
   const handleApply = (jobId: string) => {
     setSelectedJobId(jobId);
     setDialogOpen(true);
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleJobClick = (job: any) => {
+    setSelectedJobDetails(job);
+    setJobDetailsOpen(true);
   };
 
   const handleSubmitApplication = async () => {
@@ -189,7 +207,8 @@ const JobSeeker = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               whileHover={{ y: -5, scale: 1.02 }}
-              className='overflow-hidden'
+              className='overflow-hidden cursor-pointer'
+              onClick={() => handleJobClick(job)}
             >
               <Card className='p-8 backdrop-blur-sm border border-gray-200/50 hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white/50 to-transparent'>
                 <div className='space-y-4'>
@@ -220,7 +239,10 @@ const JobSeeker = () => {
                   >
                     <DialogTrigger asChild>
                       <Button
-                        onClick={() => handleApply(job.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleApply(job.id);
+                        }}
                         className='w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-lg hover:shadow-xl transition-all duration-300'
                       >
                         Apply Now
@@ -276,6 +298,97 @@ const JobSeeker = () => {
           ))}
         </AnimatePresence>
       </motion.div>
+
+      {/* Job Details Dialog */}
+      <Dialog
+        open={jobDetailsOpen}
+        onOpenChange={setJobDetailsOpen}
+      >
+        <DialogContent className='max-w-3xl overflow-y-auto max-h-[80vh] backdrop-blur-lg bg-white/90 p-8 border border-gray-200/50'>
+          <DialogHeader>
+            <DialogTitle className='text-2xl font-display font-bold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'>
+              {selectedJobDetails?.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className='space-y-6 mt-4'>
+            <div className='grid grid-cols-2 gap-4'>
+              <div className='flex items-center space-x-2'>
+                <Briefcase className='w-5 h-5 text-primary' />
+                <span className='font-medium'>
+                  {selectedJobDetails?.company_name}
+                </span>
+              </div>
+              <div className='flex items-center space-x-2'>
+                <MapPin className='w-5 h-5 text-primary' />
+                <span>{selectedJobDetails?.location}</span>
+              </div>
+              <div className='flex items-center space-x-2'>
+                <Clock className='w-5 h-5 text-primary' />
+                <span>{selectedJobDetails?.employment_type}</span>
+              </div>
+              <div className='flex items-center space-x-2'>
+                <DollarSign className='w-5 h-5 text-primary' />
+                <span>
+                  {selectedJobDetails?.salary_min &&
+                  selectedJobDetails?.salary_max
+                    ? `$${selectedJobDetails.salary_min.toLocaleString()} - $${selectedJobDetails.salary_max.toLocaleString()}`
+                    : 'Salary not specified'}
+                </span>
+              </div>
+            </div>
+
+            <div className='space-y-4'>
+              <h3 className='text-lg font-semibold'>Description</h3>
+              <p className='text-gray-700 whitespace-pre-wrap'>
+                {selectedJobDetails?.description}
+              </p>
+            </div>
+
+            {selectedJobDetails?.education_requirements && (
+              <div className='space-y-2'>
+                <div className='flex items-center space-x-2'>
+                  <GraduationCap className='w-5 h-5 text-primary' />
+                  <h3 className='text-lg font-semibold'>
+                    Education Requirements
+                  </h3>
+                </div>
+                <p className='text-gray-700'>
+                  {selectedJobDetails.education_requirements}
+                </p>
+              </div>
+            )}
+
+            {selectedJobDetails?.skills?.length > 0 && (
+              <div className='space-y-2'>
+                <div className='flex items-center space-x-2'>
+                  <ListChecks className='w-5 h-5 text-primary' />
+                  <h3 className='text-lg font-semibold'>Required Skills</h3>
+                </div>
+                <div className='flex flex-wrap gap-2'>
+                  {selectedJobDetails.skills.map((skill: string) => (
+                    <span
+                      key={skill}
+                      className='px-3 py-1 bg-primary/10 text-primary rounded-full text-sm'
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={() => {
+                setJobDetailsOpen(false);
+                handleApply(selectedJobDetails.id);
+              }}
+              className='w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white'
+            >
+              Apply for this Position
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

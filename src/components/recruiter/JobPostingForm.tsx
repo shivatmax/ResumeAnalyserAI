@@ -14,8 +14,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { X, Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import {
+  X,
+  Loader2,
+  Briefcase,
+  MapPin,
+  Building2,
+  GraduationCap,
+  Calendar,
+  Info,
+  Plus,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type EmploymentType = Database['public']['Enums']['employment_type'];
 type ExperienceLevel = Database['public']['Enums']['experience_level'];
@@ -81,7 +91,6 @@ export const JobPostingForm = () => {
       } = await supabase.auth.getSession();
       if (!session) throw new Error('No session');
 
-      // First, analyze the job with AI
       const { data: aiAnalysisResponse, error: analysisError } =
         await supabase.functions.invoke('analyze-job', {
           body: { jobData: formData },
@@ -93,7 +102,6 @@ export const JobPostingForm = () => {
         return;
       }
 
-      // Then, create the job posting with AI analysis
       const { data: jobData, error: jobError } = await supabase
         .from('jobs')
         .insert({
@@ -116,53 +124,109 @@ export const JobPostingForm = () => {
     }
   };
 
+  const formAnimation = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: 'easeOut',
+      },
+    },
+  };
+
+  const inputAnimation = {
+    focus: { scale: 1.02, transition: { duration: 0.2 } },
+  };
+
   return (
     <motion.form
       onSubmit={handleSubmit}
-      className='space-y-6'
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      className='max-w-5xl mx-auto space-y-8 p-8 rounded-2xl bg-white/90 backdrop-blur-lg shadow-2xl border border-gray-100'
+      initial='hidden'
+      animate='visible'
+      variants={formAnimation}
     >
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-        <Input
-          placeholder='Job Title'
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          required
-          className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
-        />
-        <Input
-          placeholder='Company Name'
-          value={formData.company_name}
-          onChange={(e) =>
-            setFormData({ ...formData, company_name: e.target.value })
-          }
-          required
-          className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
-        />
+      <div className='text-center mb-10'>
+        <motion.h2
+          className='text-3xl font-bold bg-gradient-to-r from-primary via-purple-600 to-indigo-600 bg-clip-text text-transparent font-display'
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          Create New Job Posting
+        </motion.h2>
       </div>
 
-      <Textarea
-        placeholder='Job Description'
-        value={formData.description}
-        onChange={(e) =>
-          setFormData({ ...formData, description: e.target.value })
-        }
-        required
-        className='min-h-[200px] bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
-      />
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
+        <motion.div
+          whileFocus='focus'
+          variants={inputAnimation}
+          className='relative'
+        >
+          <Briefcase className='absolute left-3 top-3 h-5 w-5 text-gray-400' />
+          <Input
+            placeholder='Job Title'
+            value={formData.title}
+            onChange={(e) =>
+              setFormData({ ...formData, title: e.target.value })
+            }
+            required
+            className='pl-10 h-12 bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300'
+          />
+        </motion.div>
 
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-        <Input
-          placeholder='Location'
-          value={formData.location}
+        <motion.div
+          whileFocus='focus'
+          variants={inputAnimation}
+          className='relative'
+        >
+          <Building2 className='absolute left-3 top-3 h-5 w-5 text-gray-400' />
+          <Input
+            placeholder='Company Name'
+            value={formData.company_name}
+            onChange={(e) =>
+              setFormData({ ...formData, company_name: e.target.value })
+            }
+            required
+            className='pl-10 h-12 bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300'
+          />
+        </motion.div>
+      </div>
+
+      <motion.div
+        whileFocus='focus'
+        variants={inputAnimation}
+      >
+        <Textarea
+          placeholder='Job Description'
+          value={formData.description}
           onChange={(e) =>
-            setFormData({ ...formData, location: e.target.value })
+            setFormData({ ...formData, description: e.target.value })
           }
           required
-          className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
+          className='min-h-[200px] bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300 p-4 text-base'
         />
+      </motion.div>
+
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
+        <motion.div
+          whileFocus='focus'
+          variants={inputAnimation}
+          className='relative'
+        >
+          <MapPin className='absolute left-3 top-3 h-5 w-5 text-gray-400' />
+          <Input
+            placeholder='Location'
+            value={formData.location}
+            onChange={(e) =>
+              setFormData({ ...formData, location: e.target.value })
+            }
+            required
+            className='pl-10 h-12 bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300'
+          />
+        </motion.div>
 
         <Select
           value={formData.employment_type}
@@ -170,10 +234,10 @@ export const JobPostingForm = () => {
             setFormData({ ...formData, employment_type: value })
           }
         >
-          <SelectTrigger className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'>
+          <SelectTrigger className='h-12 bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300'>
             <SelectValue placeholder='Employment Type' />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className='bg-white/95 backdrop-blur-lg border-gray-100'>
             <SelectItem value='full-time'>Full Time</SelectItem>
             <SelectItem value='part-time'>Part Time</SelectItem>
             <SelectItem value='contract'>Contract</SelectItem>
@@ -182,25 +246,36 @@ export const JobPostingForm = () => {
         </Select>
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-        <Input
-          type='number'
-          placeholder='Minimum Salary'
-          value={formData.salary_min || ''}
-          onChange={(e) =>
-            setFormData({ ...formData, salary_min: parseInt(e.target.value) })
-          }
-          className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
-        />
-        <Input
-          type='number'
-          placeholder='Maximum Salary'
-          value={formData.salary_max || ''}
-          onChange={(e) =>
-            setFormData({ ...formData, salary_max: parseInt(e.target.value) })
-          }
-          className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
-        />
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
+        <motion.div
+          whileFocus='focus'
+          variants={inputAnimation}
+        >
+          <Input
+            type='number'
+            placeholder='Minimum Salary'
+            value={formData.salary_min || ''}
+            onChange={(e) =>
+              setFormData({ ...formData, salary_min: parseInt(e.target.value) })
+            }
+            className='h-12 bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300'
+          />
+        </motion.div>
+
+        <motion.div
+          whileFocus='focus'
+          variants={inputAnimation}
+        >
+          <Input
+            type='number'
+            placeholder='Maximum Salary'
+            value={formData.salary_max || ''}
+            onChange={(e) =>
+              setFormData({ ...formData, salary_max: parseInt(e.target.value) })
+            }
+            className='h-12 bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300'
+          />
+        </motion.div>
       </div>
 
       <Select
@@ -209,10 +284,10 @@ export const JobPostingForm = () => {
           setFormData({ ...formData, experience_level: value })
         }
       >
-        <SelectTrigger className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'>
+        <SelectTrigger className='h-12 bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300'>
           <SelectValue placeholder='Experience Level' />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className='bg-white/95 backdrop-blur-lg border-gray-100'>
           <SelectItem value='entry'>Entry Level</SelectItem>
           <SelectItem value='mid'>Mid Level</SelectItem>
           <SelectItem value='senior'>Senior Level</SelectItem>
@@ -220,91 +295,133 @@ export const JobPostingForm = () => {
         </SelectContent>
       </Select>
 
-      <Input
-        placeholder='Education Requirements'
-        value={formData.education_requirements}
-        onChange={(e) =>
-          setFormData({ ...formData, education_requirements: e.target.value })
-        }
-        className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
-      />
+      <motion.div
+        whileFocus='focus'
+        variants={inputAnimation}
+        className='relative'
+      >
+        <GraduationCap className='absolute left-3 top-3 h-5 w-5 text-gray-400' />
+        <Input
+          placeholder='Education Requirements'
+          value={formData.education_requirements}
+          onChange={(e) =>
+            setFormData({ ...formData, education_requirements: e.target.value })
+          }
+          className='pl-10 h-12 bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300'
+        />
+      </motion.div>
 
-      <div className='space-y-2'>
-        <div className='flex gap-2'>
-          <Input
-            placeholder='Add Required Skills'
-            value={currentSkill}
-            onChange={(e) => setCurrentSkill(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAddSkill();
-              }
-            }}
-            className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
-          />
+      <div className='space-y-4'>
+        <div className='flex gap-3'>
+          <motion.div
+            whileFocus='focus'
+            variants={inputAnimation}
+            className='flex-1'
+          >
+            <Input
+              placeholder='Add Required Skills'
+              value={currentSkill}
+              onChange={(e) => setCurrentSkill(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddSkill();
+                }
+              }}
+              className='h-12 bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300'
+            />
+          </motion.div>
           <Button
             type='button'
             onClick={handleAddSkill}
-            className='bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white'
+            className='h-12 px-6 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2'
           >
+            <Plus className='h-5 w-5' />
             Add
           </Button>
         </div>
-        <div className='flex flex-wrap gap-2'>
-          {formData.skills.map((skill, index) => (
-            <Badge
-              key={index}
-              variant='secondary'
-              className='flex items-center gap-1 bg-white/50'
-            >
-              {skill}
-              <X
-                className='h-3 w-3 cursor-pointer'
-                onClick={() => handleRemoveSkill(skill)}
-              />
-            </Badge>
-          ))}
-        </div>
+        <AnimatePresence>
+          <motion.div className='flex flex-wrap gap-2'>
+            {formData.skills.map((skill, index) => (
+              <motion.div
+                key={skill}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Badge
+                  variant='secondary'
+                  className='px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary font-medium rounded-lg flex items-center gap-2 transition-colors duration-300'
+                >
+                  {skill}
+                  <X
+                    className='h-4 w-4 cursor-pointer hover:text-red-500 transition-colors'
+                    onClick={() => handleRemoveSkill(skill)}
+                  />
+                </Badge>
+              </motion.div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      <Input
-        type='datetime-local'
-        value={formData.application_deadline}
-        onChange={(e) =>
-          setFormData({ ...formData, application_deadline: e.target.value })
-        }
-        required
-        className='bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
-      />
-
-      <Textarea
-        placeholder='Additional Information (Optional)'
-        value={formData.additional_info || ''}
-        onChange={(e) =>
-          setFormData({ ...formData, additional_info: e.target.value })
-        }
-        className='min-h-[100px] bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
-      />
-
-      <Button
-        type='submit'
-        className='w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-lg hover:shadow-xl transition-all duration-300'
-        disabled={isSubmitting}
+      <motion.div
+        whileFocus='focus'
+        variants={inputAnimation}
+        className='relative'
       >
-        {isSubmitting ? (
-          <motion.div
-            className='flex items-center justify-center'
-            animate={{ opacity: [1, 0.5, 1] }}
-            transition={{ repeat: Infinity, duration: 1.5 }}
-          >
-            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-            Posting Job...
-          </motion.div>
-        ) : (
-          'Post Job'
-        )}
-      </Button>
+        <Calendar className='absolute left-3 top-3 h-5 w-5 text-gray-400' />
+        <Input
+          type='datetime-local'
+          value={formData.application_deadline}
+          onChange={(e) =>
+            setFormData({ ...formData, application_deadline: e.target.value })
+          }
+          required
+          className='pl-10 h-12 bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300'
+        />
+      </motion.div>
+
+      <motion.div
+        whileFocus='focus'
+        variants={inputAnimation}
+        className='relative'
+      >
+        <Info className='absolute left-3 top-3 h-5 w-5 text-gray-400' />
+        <Textarea
+          placeholder='Additional Information (Optional)'
+          value={formData.additional_info || ''}
+          onChange={(e) =>
+            setFormData({ ...formData, additional_info: e.target.value })
+          }
+          className='pl-10 min-h-[100px] bg-white/80 border-2 border-gray-100 hover:border-primary/30 focus:border-primary/50 rounded-xl shadow-sm transition-all duration-300'
+        />
+      </motion.div>
+
+      <motion.div
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+      >
+        <Button
+          type='submit'
+          className='w-full h-14 bg-gradient-to-r from-primary via-purple-600 to-indigo-600 hover:from-primary/90 hover:via-purple-600/90 hover:to-indigo-600/90 text-white text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300'
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <motion.div
+              className='flex items-center justify-center gap-3'
+              animate={{ opacity: [1, 0.5, 1] }}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+            >
+              <Loader2 className='h-5 w-5 animate-spin' />
+              Posting Job...
+            </motion.div>
+          ) : (
+            'Post Job'
+          )}
+        </Button>
+      </motion.div>
     </motion.form>
   );
 };

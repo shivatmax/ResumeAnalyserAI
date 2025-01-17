@@ -1,16 +1,17 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import Index from "./pages/Index";
-import JobSeeker from "./pages/JobSeeker";
-import Recruiter from "./pages/Recruiter";
-import MassApplier from "./pages/MassApplier";
-import Auth from "./pages/Auth";
+import { Toaster } from '@/components/ui/toaster';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import Index from './pages/Index';
+import JobSeeker from './pages/JobSeeker';
+import Recruiter from './pages/Recruiter';
+import MassApplier from './pages/MassApplier';
+import Auth from './pages/Auth';
+import About from './pages/About';
 
 const queryClient = new QueryClient();
 
@@ -23,7 +24,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       setIsAuthenticated(!!session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
     });
 
@@ -34,7 +37,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <div>Loading...</div>;
   }
 
-  return isAuthenticated ? children : <Navigate to="/auth" />;
+  return isAuthenticated ? children : <Navigate to='/auth' />;
 };
 
 const App = () => (
@@ -43,11 +46,14 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode='wait'>
           <Routes>
-            <Route path="/auth" element={<Auth />} />
             <Route
-              path="/"
+              path='/auth'
+              element={<Auth />}
+            />
+            <Route
+              path='/'
               element={
                 <ProtectedRoute>
                   <Index />
@@ -55,7 +61,11 @@ const App = () => (
               }
             />
             <Route
-              path="/job-seeker"
+              path='/about'
+              element={<About />}
+            />
+            <Route
+              path='/job-seeker'
               element={
                 <ProtectedRoute>
                   <JobSeeker />
@@ -63,7 +73,7 @@ const App = () => (
               }
             />
             <Route
-              path="/recruiter"
+              path='/recruiter'
               element={
                 <ProtectedRoute>
                   <Recruiter />
@@ -71,7 +81,7 @@ const App = () => (
               }
             />
             <Route
-              path="/mass-applier"
+              path='/mass-applier'
               element={
                 <ProtectedRoute>
                   <MassApplier />

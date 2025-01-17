@@ -51,7 +51,7 @@ const Index = () => {
           <motion.a
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            href='#'
+            href='/about'
             className='text-gray-600 hover:text-primary transition-colors duration-300'
           >
             About Us

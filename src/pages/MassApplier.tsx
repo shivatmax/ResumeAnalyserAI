@@ -16,11 +16,19 @@ import {
   FileUp,
   Briefcase,
   CheckCircle2,
-  AlertCircle,
   Clock,
   MapPin,
   Loader2,
+  DollarSign,
+  GraduationCap,
+  ListChecks,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 type ApplicationStatus = Database['public']['Enums']['application_status'];
 
@@ -32,6 +40,9 @@ const MassApplier = () => {
   const [progress, setProgress] = useState(0);
   const [processedCount, setProcessedCount] = useState(0);
   const [totalFiles, setTotalFiles] = useState(0);
+  const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -45,7 +56,11 @@ const MassApplier = () => {
     checkAuth();
   }, [navigate]);
 
-  const { data: jobs, isLoading } = useQuery({
+  const {
+    data: jobs,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ['mass-apply-jobs'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -59,6 +74,20 @@ const MassApplier = () => {
     },
   });
 
+  const resetFormState = () => {
+    setSelectedFiles(null);
+    setSelectedJob(null);
+    setProgress(0);
+    setProcessedCount(0);
+    setTotalFiles(0);
+    const fileInput = document.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
@@ -67,10 +96,12 @@ const MassApplier = () => {
       );
       if (!allPdfs) {
         toast.error('Please upload only PDF files');
+        event.target.value = '';
         return;
       }
       if (files.length > 100) {
         toast.error('Maximum 100 resumes allowed');
+        event.target.value = '';
         return;
       }
       setSelectedFiles(files);
@@ -236,22 +267,25 @@ const MassApplier = () => {
         toast.success(
           `Successfully submitted ${applications.length} out of ${totalFiles} applications!`
         );
+
+        // Refresh the jobs data and reset form state
+        await refetch();
+        resetFormState();
       } else {
         toast.error('No applications were processed successfully');
       }
-
-      // Reset form state
-      setSelectedFiles(null);
-      setSelectedJob(null);
-      setProgress(0);
-      setProcessedCount(0);
-      setTotalFiles(0);
     } catch (error) {
       console.error('Failed to submit applications:', error);
       toast.error('Failed to submit applications');
     } finally {
       setIsUploading(false);
     }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleJobClick = (job: any) => {
+    setSelectedJobDetails(job);
+    setJobDetailsOpen(true);
   };
 
   if (isLoading)
@@ -358,6 +392,7 @@ const MassApplier = () => {
                 exit={{ opacity: 0, scale: 0.9 }}
                 whileHover={{ y: -5, scale: 1.02 }}
                 className='overflow-hidden'
+                onClick={() => handleJobClick(job)}
               >
                 <RadioGroupItem
                   value={job.id}
@@ -398,6 +433,86 @@ const MassApplier = () => {
           </AnimatePresence>
         </RadioGroup>
       </motion.div>
+
+      <Dialog
+        open={jobDetailsOpen}
+        onOpenChange={setJobDetailsOpen}
+      >
+        <DialogContent className='max-w-3xl max-h-[80vh] overflow-y-auto'>
+          <DialogHeader>
+            <DialogTitle className='text-2xl font-display font-bold'>
+              {selectedJobDetails?.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className='space-y-6 py-4'>
+            <div className='space-y-4'>
+              <div className='flex items-center space-x-2'>
+                <Briefcase className='w-5 h-5 text-primary' />
+                <span className='font-medium'>
+                  {selectedJobDetails?.company_name}
+                </span>
+              </div>
+              <div className='flex items-center space-x-2'>
+                <MapPin className='w-5 h-5 text-primary' />
+                <span>{selectedJobDetails?.location}</span>
+              </div>
+              <div className='flex items-center space-x-2'>
+                <Clock className='w-5 h-5 text-primary' />
+                <span>{selectedJobDetails?.employment_type}</span>
+              </div>
+              <div className='flex items-center space-x-2'>
+                <DollarSign className='w-5 h-5 text-primary' />
+                <span>
+                  {selectedJobDetails?.salary_min &&
+                  selectedJobDetails?.salary_max
+                    ? `$${selectedJobDetails.salary_min.toLocaleString()} - $${selectedJobDetails.salary_max.toLocaleString()}`
+                    : 'Salary not specified'}
+                </span>
+              </div>
+            </div>
+
+            <div className='space-y-4'>
+              <h3 className='text-lg font-semibold'>Description</h3>
+              <p className='text-gray-700 whitespace-pre-wrap'>
+                {selectedJobDetails?.description}
+              </p>
+            </div>
+
+            {selectedJobDetails?.education_requirements && (
+              <div className='space-y-2'>
+                <div className='flex items-center space-x-2'>
+                  <GraduationCap className='w-5 h-5 text-primary' />
+                  <h3 className='text-lg font-semibold'>
+                    Education Requirements
+                  </h3>
+                </div>
+                <p className='text-gray-700'>
+                  {selectedJobDetails.education_requirements}
+                </p>
+              </div>
+            )}
+
+            {selectedJobDetails?.skills?.length > 0 && (
+              <div className='space-y-2'>
+                <div className='flex items-center space-x-2'>
+                  <ListChecks className='w-5 h-5 text-primary' />
+                  <h3 className='text-lg font-semibold'>Required Skills</h3>
+                </div>
+                <div className='flex flex-wrap gap-2'>
+                  {selectedJobDetails.skills.map((skill: string) => (
+                    <span
+                      key={skill}
+                      className='px-3 py-1 bg-primary/10 text-primary rounded-full text-sm'
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
