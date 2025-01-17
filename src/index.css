@@ -27,21 +27,63 @@
     --ring: 240 5.9% 10%;
     --radius: 0.75rem;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-gradient-to-br from-gray-50 to-gray-100 text-foreground antialiased min-h-screen;
   }
+
   .glass-card {
     @apply bg-white/80 backdrop-blur-lg border border-white/20 shadow-lg;
   }
+
+  .hover-card {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .page-container {
+    @apply container mx-auto p-6 animate-fade-in;
+  }
+
+  .section-title {
+    @apply text-3xl font-bold text-gray-900 mb-6 font-display;
+  }
+
+  .card-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  .form-container {
+    @apply max-w-4xl mx-auto bg-white/90 backdrop-blur-sm shadow-xl rounded-xl p-8;
+  }
+
+  .input-group {
+    @apply space-y-2;
+  }
+
+  .input-label {
+    @apply text-sm font-medium text-gray-700;
+  }
+
+  .button-primary {
+    @apply bg-primary hover:bg-primary-dark text-white transition-colors;
+  }
+
+  .button-secondary {
+    @apply bg-secondary hover:bg-secondary-dark text-white transition-colors;
+  }
+
+  .button-accent {
+    @apply bg-accent hover:bg-accent-dark text-white transition-colors;
+  }
+
   .animate-in {
     animation: fade-in 0.5s ease-out;
   }
+
   .animate-out {
     animation: fade-out 0.5s ease-out;
   }
@@ -51,6 +93,35 @@
   @apply transition-all duration-300 ease-in-out;
 }
 
-.hover-card {
-  @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full hover:bg-gray-400 transition-colors;
+}
+
+/* Card hover effects */
+.card-hover {
+  @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:bg-white/95;
+}
+
+/* Loading animation */
+.loading-spinner {
+  @apply animate-spin rounded-full border-4 border-gray-200 border-t-primary h-8 w-8;
+}
+
+/* Form field animations */
+.form-field {
+  @apply transition-all duration-200 focus-within:ring-2 focus-within:ring-primary/20;
+}
+
+/* Badge animations */
+.badge-animate {
+  @apply transition-all duration-200 hover:scale-105;
 }
