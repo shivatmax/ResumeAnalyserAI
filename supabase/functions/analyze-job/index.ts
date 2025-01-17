@@ -9,12 +9,19 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { jobData } = await req.json();
+    
+    if (!jobData) {
+      throw new Error('No job data provided');
+    }
+
+    console.log('Analyzing job data:', JSON.stringify(jobData));
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -31,58 +38,60 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `Please analyze this job information and extract key details for scoring candidates. Job Description: ${jobData.description}, Additional Info: ${jobData.additional_info || ''}, Required Skills: ${jobData.skills.join(', ')}`
+            content: `Please analyze this job information and extract key details for scoring candidates. 
+            Job Title: ${jobData.title}
+            Job Description: ${jobData.description}
+            Additional Info: ${jobData.additional_info || ''}
+            Required Skills: ${jobData.skills.join(', ')}`
           }
         ],
-        response_format: {
-          type: "json_schema",
-          schema: {
-            type: "object",
-            properties: {
-              required_skills: {
-                type: "array",
-                items: { type: "string" },
-                description: "List of required technical skills"
-              },
-              experience_requirements: {
-                type: "object",
-                properties: {
-                  minimum_years: { type: "number" },
-                  level: { 
-                    type: "string",
-                    enum: ["ENTRY", "MID", "SENIOR", "EXECUTIVE"]
-                  }
-                }
-              },
-              education_requirements: { type: "string" },
-              key_responsibilities: {
-                type: "array",
-                items: { type: "string" }
-              },
-              scoring_criteria: {
-                type: "object",
-                properties: {
-                  technical_skills_weight: { type: "number" },
-                  experience_weight: { type: "number" },
-                  education_weight: { type: "number" }
-                }
-              }
-            },
-            required: ["required_skills", "experience_requirements", "education_requirements", "key_responsibilities", "scoring_criteria"]
-          }
-        }
+        temperature: 0.7,
+        max_tokens: 1000,
       }),
     });
 
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('OpenAI API error:', errorData);
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
     const data = await response.json();
-    return new Response(JSON.stringify(data.choices[0].message.content), {
+    console.log('OpenAI response:', JSON.stringify(data));
+
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('Invalid response format from OpenAI');
+    }
+
+    const analysis = {
+      required_skills: data.choices[0].message.content.match(/\b\w+\b/g) || [],
+      experience_requirements: {
+        minimum_years: parseInt(data.choices[0].message.content.match(/\d+/)?.[0] || '0'),
+        level: jobData.experience_level.toUpperCase()
+      },
+      education_requirements: jobData.education_requirements || 'Not specified',
+      key_responsibilities: data.choices[0].message.content.split('\n').filter(line => line.trim()),
+      scoring_criteria: {
+        technical_skills_weight: 0.4,
+        experience_weight: 0.3,
+        education_weight: 0.3
+      }
+    };
+
+    return new Response(JSON.stringify(analysis), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
     console.error('Error in analyze-job function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ 
+        error: error.message,
+        details: error.stack 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
   }
 });
