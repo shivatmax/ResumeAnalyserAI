@@ -137,7 +137,11 @@ const JobSeeker = () => {
           resume_url: publicUrl,
           status: 'pending',
           parsed_data: parsedData.data,
-          score: scoringResult?.overallScore || null,
+          score: scoringResult?.overall_score || null,
+          scoring_breakdown: scoringResult?.scoring_breakdown || null,
+          strengths: scoringResult?.analysis?.strengths || null,
+          gaps: scoringResult?.analysis?.gaps || null,
+          recommendation: scoringResult?.recommendation || null,
         });
 
       if (applicationError) throw applicationError;

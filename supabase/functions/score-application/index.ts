@@ -34,7 +34,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o-2024-08-06',
         messages: [
           {
             role: 'system',
@@ -47,30 +47,60 @@ serve(async (req) => {
             content: `Please score this application based on the following data:
 
 Job Analysis:
-${JSON.stringify(jobAnalysis, null, 2)}
+${jobAnalysis}
 
 Resume Data:
-${JSON.stringify(resumeData, null, 2)}
-
-Provide a structured response with:
-1. Overall score (0-100)
-2. Detailed breakdown following the job's scoring rubric
-3. Strengths and gaps analysis
-4. Brief recommendation
-
-The response must be valid JSON with these exact fields.`,
+${resumeData}`,
           },
         ],
         temperature: 0.1,
         max_tokens: 1000,
-        response_format: { type: 'json_object' },
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'application_scoring',
+            schema: {
+              type: 'object',
+              properties: {
+                overall_score: {
+                  type: 'number',
+                  description: 'Overall score from 0-100',
+                },
+                scoring_breakdown: {
+                  type: 'object',
+                  description:
+                    "Detailed scoring breakdown following job's rubric",
+                },
+                analysis: {
+                  type: 'object',
+                  properties: {
+                    strengths: {
+                      type: 'array',
+                      items: { type: 'string' },
+                    },
+                    gaps: {
+                      type: 'array',
+                      items: { type: 'string' },
+                    },
+                  },
+                  required: ['strengths', 'gaps'],
+                },
+                recommendation: {
+                  type: 'string',
+                  description: 'Brief hiring recommendation',
+                },
+              },
+              additionalProperties: false,
+            },
+          },
+        },
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.text();
       console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      throw new Error(`OpenAI API error: ${response.status} ${errorData}`);
     }
 
     const data = await response.json();

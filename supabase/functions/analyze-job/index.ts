@@ -46,7 +46,7 @@ Job Description: ${jobData.description}
 Additional Info: ${jobData.additional_info || ''}
 Required Skills: ${jobData.skills.join(', ')}
 
-Please provide a structured response with:
+Please provide a structured response but in text format with:
 
 1. Experience Requirements
 - Years of experience needed
@@ -100,7 +100,7 @@ Never Greet or say anything else just the structured response.`,
 
     const analysis = data.choices[0].message.content;
 
-    return new Response(analysis, {
+    return new Response(JSON.stringify({ analysis }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

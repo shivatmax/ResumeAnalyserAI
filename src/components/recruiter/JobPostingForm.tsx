@@ -81,7 +81,7 @@ export const JobPostingForm = () => {
       if (!session) throw new Error('No session');
 
       // First, analyze the job with AI
-      const { data: aiAnalysis, error: analysisError } =
+      const { data: aiAnalysisResponse, error: analysisError } =
         await supabase.functions.invoke('analyze-job', {
           body: { jobData: formData },
         });
@@ -98,7 +98,7 @@ export const JobPostingForm = () => {
         .insert({
           ...formData,
           recruiter_id: session.user.id,
-          ai_analysis: aiAnalysis, // Save the AI analysis response
+          ai_analysis: aiAnalysisResponse.analysis, // Access the analysis from the response object
         })
         .select()
         .single();
@@ -106,7 +106,7 @@ export const JobPostingForm = () => {
       if (jobError) throw jobError;
 
       toast.success('Job posted successfully!');
-      navigate('/recruiter/jobs');
+      navigate('/recruiter');
     } catch (error) {
       console.error(error);
       toast.error('Failed to post job');
