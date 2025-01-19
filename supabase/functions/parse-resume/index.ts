@@ -183,8 +183,10 @@ serve(async (req) => {
 
     console.log('Successfully downloaded resume, size:', fileData.size);
 
+    // Convert ArrayBuffer to Uint8Array for proper PDF handling
+    const pdfBytes = new Uint8Array(await fileData.arrayBuffer());
     const formData = new FormData();
-    const blob = new Blob([fileData], { type: 'application/pdf' });
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     formData.append('files', blob, 'resume.pdf');
 
     console.log('Sending request to Unstructured API...');

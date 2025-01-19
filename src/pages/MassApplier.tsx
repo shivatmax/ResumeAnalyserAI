@@ -23,7 +23,6 @@ import {
   GraduationCap,
   ListChecks,
   X,
-  Trash2,
   Info,
 } from 'lucide-react';
 import {
@@ -39,15 +38,10 @@ type ApplicationStatus = Database['public']['Enums']['application_status'];
 const WORKER_POOL_SIZE = navigator.hardwareConcurrency || 4;
 const BATCH_SIZE = 10;
 
-interface ResumeFile extends File {
-  id: string;
-  name: string;
-}
-
 const MassApplier = () => {
   const navigate = useNavigate();
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
-  const [selectedFiles, setSelectedFiles] = useState<ResumeFile[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [processedCount, setProcessedCount] = useState(0);
@@ -92,45 +86,45 @@ const MassApplier = () => {
     setProgress(0);
     setProcessedCount(0);
     setTotalFiles(0);
+    const fileInput = document.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
       const newFiles = Array.from(files);
-
-      // Validate file types
       const invalidFiles = newFiles.filter(
         (file) => file.type !== 'application/pdf'
       );
+
       if (invalidFiles.length > 0) {
         toast.error('Please upload only PDF files');
         return;
       }
 
-      // Check total count including existing files
-      if (selectedFiles.length + newFiles.length > 100) {
+      const totalNewCount = selectedFiles.length + newFiles.length;
+      if (totalNewCount > 100) {
         toast.error('Maximum 100 resumes allowed');
         return;
       }
 
-      // Add unique ID to each file
-      const filesWithIds: ResumeFile[] = newFiles.map((file) => ({
-        ...file,
-        id: crypto.randomUUID(),
-        name: file.name,
-      }));
-
-      setSelectedFiles((prev) => [...prev, ...filesWithIds]);
-      setTotalFiles((prev) => prev + filesWithIds.length);
+      setSelectedFiles((prev) => [...prev, ...newFiles]);
+      setTotalFiles(totalNewCount);
     }
-    // Reset input
-    event.target.value = '';
   };
 
-  const removeFile = (fileId: string) => {
-    setSelectedFiles((prev) => prev.filter((file) => file.id !== fileId));
-    setTotalFiles((prev) => prev - 1);
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => {
+      const newFiles = [...prev];
+      newFiles.splice(index, 1);
+      setTotalFiles(newFiles.length);
+      return newFiles;
+    });
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -238,23 +232,13 @@ const MassApplier = () => {
 
   return (
     <div className='container mx-auto p-6 overflow-hidden'>
-      <div className='flex justify-between items-center mb-8'>
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className='text-4xl font-display font-bold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'
-        >
-          Mass Apply
-        </motion.h1>
-        <Button
-          onClick={() => navigate('/')}
-          variant='outline'
-          size='sm'
-          className='hover:bg-gray-100'
-        >
-          <span className='flex items-center gap-2'>← Back to Home</span>
-        </Button>
-      </div>
+      <motion.h1
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className='text-4xl font-display font-bold mb-8 bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'
+      >
+        Mass Apply
+      </motion.h1>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -286,34 +270,27 @@ const MassApplier = () => {
               <p className='flex items-center space-x-2 text-gray-600'>
                 <FileUp className='w-4 h-4' />
                 <span className='text-sm'>
-                  Selected: {selectedFiles.length} resumes (Max: 100)
+                  Selected: {selectedFiles.length} resumes
                 </span>
               </p>
 
-              <div className='max-h-60 overflow-y-auto space-y-2'>
-                <AnimatePresence>
-                  {selectedFiles.map((file) => (
-                    <motion.div
-                      key={file.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      className='flex items-center justify-between p-2 bg-white/90 rounded-lg border border-gray-200 shadow-sm'
+              <div className='max-h-40 overflow-y-auto space-y-2'>
+                {selectedFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    className='flex items-center justify-between bg-gray-50 p-2 rounded'
+                  >
+                    <span className='text-sm truncate'>{file.name}</span>
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      onClick={() => removeFile(index)}
+                      disabled={isUploading}
                     >
-                      <span className='text-sm text-gray-700 truncate max-w-[80%]'>
-                        {file.name}
-                      </span>
-                      <Button
-                        variant='ghost'
-                        size='sm'
-                        onClick={() => removeFile(file.id)}
-                        className='text-red-500 hover:text-red-700 hover:bg-red-50'
-                      >
-                        <Trash2 className='w-4 h-4' />
-                      </Button>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                      <X className='w-4 h-4 text-gray-500 hover:text-red-500' />
+                    </Button>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -372,32 +349,43 @@ const MassApplier = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 whileHover={{ y: -5, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 className='overflow-hidden'
               >
                 <RadioGroupItem
                   value={job.id}
                   id={job.id}
                   className='peer sr-only'
-                  onClick={() => setSelectedJob(job.id)}
                 />
                 <Label
                   htmlFor={job.id}
-                  className='block cursor-pointer relative'
+                  className='block cursor-pointer'
                 >
-                  <Card className='p-8 backdrop-blur-sm border border-gray-200/50 hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white/50 to-transparent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 relative z-10'>
-                    {/* Add selected indicator */}
-                    <div
-                      className={`absolute inset-0 bg-black/5 opacity-0 transition-opacity duration-200 ${
-                        selectedJob === job.id ? 'opacity-100' : ''
-                      } z-0`}
-                    />
-                    <div className='space-y-4 relative z-10'>
-                      <div className='flex items-center space-x-3'>
-                        <Briefcase className='w-6 h-6 text-primary' />
-                        <h2 className='text-xl font-display font-semibold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent'>
-                          {job.title}
-                        </h2>
+                  <Card
+                    className={`p-8 backdrop-blur-sm border hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white/50 to-transparent ${
+                      selectedJob === job.id
+                        ? 'border-black border-2'
+                        : 'border-gray-200/50'
+                    }`}
+                  >
+                    <div className='space-y-4'>
+                      <div className='flex items-center justify-between'>
+                        <div className='flex items-center space-x-3'>
+                          <Briefcase className='w-6 h-6 text-primary' />
+                          <h2 className='text-xl font-display font-semibold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent'>
+                            {job.title}
+                          </h2>
+                        </div>
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleJobClick(job);
+                          }}
+                        >
+                          <Info className='w-5 h-5 text-primary' />
+                        </Button>
                       </div>
 
                       <p className='text-lg font-medium text-primary/80'>
@@ -413,18 +401,6 @@ const MassApplier = () => {
                         <Clock className='w-4 h-4' />
                         <p className='text-sm'>{job.employment_type}</p>
                       </div>
-
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleJobClick(job);
-                        }}
-                        variant='outline'
-                        className='w-full mt-4'
-                      >
-                        <Info className='w-4 h-4 mr-2' />
-                        View Details
-                      </Button>
                     </div>
                   </Card>
                 </Label>
