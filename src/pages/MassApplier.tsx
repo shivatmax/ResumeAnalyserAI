@@ -22,6 +22,9 @@ import {
   DollarSign,
   GraduationCap,
   ListChecks,
+  X,
+  Trash2,
+  Info,
 } from 'lucide-react';
 import {
   Dialog,
@@ -29,13 +32,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { WorkerPool } from '@/utils/workerPool';
 
 type ApplicationStatus = Database['public']['Enums']['application_status'];
+
+const WORKER_POOL_SIZE = navigator.hardwareConcurrency || 4;
+const BATCH_SIZE = 10;
+
+interface ResumeFile extends File {
+  id: string;
+  name: string;
+}
 
 const MassApplier = () => {
   const navigate = useNavigate();
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<ResumeFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [processedCount, setProcessedCount] = useState(0);
@@ -75,210 +87,139 @@ const MassApplier = () => {
   });
 
   const resetFormState = () => {
-    setSelectedFiles(null);
+    setSelectedFiles([]);
     setSelectedJob(null);
     setProgress(0);
     setProcessedCount(0);
     setTotalFiles(0);
-    const fileInput = document.querySelector(
-      'input[type="file"]'
-    ) as HTMLInputElement;
-    if (fileInput) {
-      fileInput.value = '';
-    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      const allPdfs = Array.from(files).every(
-        (file) => file.type === 'application/pdf'
+      const newFiles = Array.from(files);
+
+      // Validate file types
+      const invalidFiles = newFiles.filter(
+        (file) => file.type !== 'application/pdf'
       );
-      if (!allPdfs) {
+      if (invalidFiles.length > 0) {
         toast.error('Please upload only PDF files');
-        event.target.value = '';
         return;
       }
-      if (files.length > 100) {
+
+      // Check total count including existing files
+      if (selectedFiles.length + newFiles.length > 100) {
         toast.error('Maximum 100 resumes allowed');
-        event.target.value = '';
         return;
       }
-      setSelectedFiles(files);
-      setTotalFiles(files.length);
+
+      // Add unique ID to each file
+      const filesWithIds: ResumeFile[] = newFiles.map((file) => ({
+        ...file,
+        id: crypto.randomUUID(),
+        name: file.name,
+      }));
+
+      setSelectedFiles((prev) => [...prev, ...filesWithIds]);
+      setTotalFiles((prev) => prev + filesWithIds.length);
     }
+    // Reset input
+    event.target.value = '';
   };
 
-  const processResume = async (file: File, userId: string, jobId: string) => {
-    try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${userId}/${crypto.randomUUID()}.${fileExt}`;
+  const removeFile = (fileId: string) => {
+    setSelectedFiles((prev) => prev.filter((file) => file.id !== fileId));
+    setTotalFiles((prev) => prev - 1);
+  };
 
-      // Upload resume
-      const { error: uploadError } = await supabase.storage
-        .from('resumes')
-        .upload(filePath, file);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const submitApplications = async (applications: any[]) => {
+    const { error } = await supabase.from('applications').insert(
+      applications.map((app) => ({
+        job_id: app.job_id,
+        applicant_id: app.applicant_id,
+        resume_url: app.resume_url,
+        status: app.status,
+        parsed_data: app.parsed_data,
+        score: app.score,
+        scoring_breakdown: app.scoring_breakdown,
+        strengths: app.strengths,
+        gaps: app.gaps,
+        recommendation: app.recommendation,
+      }))
+    );
 
-      if (uploadError) throw new Error(`Upload error: ${uploadError.message}`);
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('resumes').getPublicUrl(filePath);
-
-      // Parse resume using Edge Function
-      const { data: parsedResponse, error: parseError } =
-        await supabase.functions.invoke('parse-resume', {
-          body: { resumeUrl: publicUrl },
-        });
-
-      if (parseError || !parsedResponse?.data) {
-        throw new Error(
-          `Parse error: ${parseError?.message || 'No parsed data received'}`
-        );
-      }
-
-      // Get job analysis data
-      const { data: jobData, error: jobError } = await supabase
-        .from('jobs')
-        .select('ai_analysis')
-        .eq('id', jobId)
-        .single();
-
-      if (jobError || !jobData?.ai_analysis) {
-        throw new Error(
-          `Job data error: ${jobError?.message || 'No job analysis found'}`
-        );
-      }
-
-      // Score the application
-      const { data: scoringResult, error: scoringError } =
-        await supabase.functions.invoke('score-application', {
-          body: {
-            jobAnalysis: jobData.ai_analysis,
-            resumeData: parsedResponse.data,
-          },
-        });
-
-      if (scoringError || !scoringResult) {
-        throw new Error(
-          `Scoring error: ${
-            scoringError?.message || 'No scoring result received'
-          }`
-        );
-      }
-
-      return {
-        job_id: jobId,
-        applicant_id: userId,
-        resume_url: publicUrl,
-        status: 'pending' as ApplicationStatus,
-        parsed_data: parsedResponse.data,
-        score: scoringResult.overall_score,
-        scoring_breakdown: scoringResult.scoring_breakdown,
-        strengths: scoringResult.analysis.strengths,
-        gaps: scoringResult.analysis.gaps,
-        recommendation: scoringResult.recommendation,
-      };
-    } catch (error) {
-      console.error(`Error processing resume ${file.name}:`, error);
-      throw new Error(
-        `Failed to process resume ${file.name}: ${error.message}`
-      );
-    }
+    if (error) throw new Error(`Failed to save applications: ${error.message}`);
   };
 
   const handleMassApply = async () => {
-    if (!selectedFiles || selectedFiles.length === 0) {
-      toast.error('Please select resumes to upload');
-      return;
-    }
-
-    if (!selectedJob) {
-      toast.error('Please select a job to apply to');
+    if (selectedFiles.length === 0 || !selectedJob) {
+      toast.error('Please select files and job');
       return;
     }
 
     try {
       setIsUploading(true);
-      setProgress(0);
-      setProcessedCount(0);
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/auth');
-        return;
-      }
-
-      const userId = session.user.id;
-      const files = Array.from(selectedFiles);
-      const batchSize = 3; // Reduced batch size for better reliability
-      const applications = [];
+      const files = selectedFiles;
       const totalFiles = files.length;
+      const workerPool = new WorkerPool(
+        WORKER_POOL_SIZE,
+        '/src/workers/resumeProcessor.ts',
+        { type: 'module' }
+      );
 
-      // Process files in sequential batches
-      for (let i = 0; i < files.length; i += batchSize) {
-        const batch = files.slice(i, i + batchSize);
-        const batchResults = [];
+      // Process files in batches
+      const results = [];
+      for (let i = 0; i < files.length; i += BATCH_SIZE) {
+        const batch = files.slice(i, Math.min(i + BATCH_SIZE, files.length));
 
-        // Process each file in the batch sequentially
-        for (const file of batch) {
-          try {
-            const result = await processResume(file, userId, selectedJob);
-            if (result) {
-              batchResults.push(result);
-              // Update progress after each successful processing
+        const session = await supabase.auth.getSession();
+        const userId = session?.data?.session?.user.id;
+        const supabaseConfig = {
+          url: import.meta.env.VITE_SUPABASE_URL,
+          serviceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+        };
+        // Process batch in parallel
+        const batchPromises = batch.map((file) =>
+          workerPool
+            .process(file, userId, selectedJob, supabaseConfig)
+            .catch((error) => {
+              console.error(`Error processing ${file.name}:`, error);
+              return null;
+            })
+            .finally(() => {
               setProcessedCount((prev) => {
                 const newCount = prev + 1;
                 setProgress((newCount / totalFiles) * 100);
                 return newCount;
               });
-            }
-          } catch (error) {
-            console.error(`Error processing ${file.name}:`, error);
-            toast.error(`Failed to process ${file.name}: ${error.message}`);
-            // Continue with next file even if current one fails
-            setProcessedCount((prev) => {
-              const newCount = prev + 1;
-              setProgress((newCount / totalFiles) * 100);
-              return newCount;
-            });
-          }
-        }
-
-        // Add successful results to applications array
-        if (batchResults.length > 0) {
-          applications.push(...batchResults);
-        }
-
-        // Optional: Add a small delay between batches to prevent rate limiting
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-
-      // Submit all successful applications to database
-      if (applications.length > 0) {
-        const { error: applicationError } = await supabase
-          .from('applications')
-          .insert(applications);
-
-        if (applicationError) throw applicationError;
-
-        toast.success(
-          `Successfully submitted ${applications.length} out of ${totalFiles} applications!`
+            })
         );
 
-        // Refresh the jobs data and reset form state
-        await refetch();
-        resetFormState();
-      } else {
-        toast.error('No applications were processed successfully');
+        // Wait for batch to complete
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...batchResults.filter(Boolean));
+
+        // Optional: Add delay between batches to prevent rate limiting
+        if (i + BATCH_SIZE < files.length) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+
+      // Submit successful applications
+      if (results.length > 0) {
+        await submitApplications(results);
+        toast.success(
+          `Successfully processed ${results.length} out of ${totalFiles} applications`
+        );
       }
     } catch (error) {
-      console.error('Failed to submit applications:', error);
-      toast.error('Failed to submit applications');
+      console.error('Mass apply error:', error);
+      toast.error('Failed to process applications');
     } finally {
       setIsUploading(false);
+      resetFormState();
     }
   };
 
@@ -331,12 +272,40 @@ const MassApplier = () => {
               <Upload className='absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
             </div>
 
-            <p className='flex items-center space-x-2 text-gray-600'>
-              <FileUp className='w-4 h-4' />
-              <span className='text-sm'>
-                Selected: {selectedFiles ? selectedFiles.length : 0} resumes
-              </span>
-            </p>
+            <div className='space-y-2'>
+              <p className='flex items-center space-x-2 text-gray-600'>
+                <FileUp className='w-4 h-4' />
+                <span className='text-sm'>
+                  Selected: {selectedFiles.length} resumes (Max: 100)
+                </span>
+              </p>
+
+              <div className='max-h-60 overflow-y-auto space-y-2'>
+                <AnimatePresence>
+                  {selectedFiles.map((file) => (
+                    <motion.div
+                      key={file.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className='flex items-center justify-between p-2 bg-white/90 rounded-lg border border-gray-200 shadow-sm'
+                    >
+                      <span className='text-sm text-gray-700 truncate max-w-[80%]'>
+                        {file.name}
+                      </span>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        onClick={() => removeFile(file.id)}
+                        className='text-red-500 hover:text-red-700 hover:bg-red-50'
+                      >
+                        <Trash2 className='w-4 h-4' />
+                      </Button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
 
             {isUploading && (
               <motion.div
@@ -356,7 +325,9 @@ const MassApplier = () => {
 
             <Button
               onClick={handleMassApply}
-              disabled={!selectedJob || !selectedFiles || isUploading}
+              disabled={
+                !selectedJob || selectedFiles.length === 0 || isUploading
+              }
               className='w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white'
             >
               {isUploading ? (
@@ -371,7 +342,7 @@ const MassApplier = () => {
               ) : (
                 <div className='flex items-center justify-center'>
                   <Upload className='mr-2 h-4 w-4' />
-                  Apply with {selectedFiles?.length || 0} Resumes
+                  Apply with {selectedFiles.length} Resumes
                 </div>
               )}
             </Button>
@@ -391,20 +362,27 @@ const MassApplier = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 whileHover={{ y: -5, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 className='overflow-hidden'
-                onClick={() => handleJobClick(job)}
               >
                 <RadioGroupItem
                   value={job.id}
                   id={job.id}
                   className='peer sr-only'
+                  onClick={() => setSelectedJob(job.id)}
                 />
                 <Label
                   htmlFor={job.id}
-                  className='block cursor-pointer'
+                  className='block cursor-pointer relative'
                 >
-                  <Card className='p-8 backdrop-blur-sm border border-gray-200/50 hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white/50 to-transparent peer-data-[state=checked]:border-primary'>
-                    <div className='space-y-4'>
+                  <Card className='p-8 backdrop-blur-sm border border-gray-200/50 hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white/50 to-transparent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 relative z-10'>
+                    {/* Add selected indicator */}
+                    <div
+                      className={`absolute inset-0 bg-black/5 opacity-0 transition-opacity duration-200 ${
+                        selectedJob === job.id ? 'opacity-100' : ''
+                      } z-0`}
+                    />
+                    <div className='space-y-4 relative z-10'>
                       <div className='flex items-center space-x-3'>
                         <Briefcase className='w-6 h-6 text-primary' />
                         <h2 className='text-xl font-display font-semibold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent'>
@@ -425,6 +403,18 @@ const MassApplier = () => {
                         <Clock className='w-4 h-4' />
                         <p className='text-sm'>{job.employment_type}</p>
                       </div>
+
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleJobClick(job);
+                        }}
+                        variant='outline'
+                        className='w-full mt-4'
+                      >
+                        <Info className='w-4 h-4 mr-2' />
+                        View Details
+                      </Button>
                     </div>
                   </Card>
                 </Label>
