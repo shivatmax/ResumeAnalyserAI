@@ -23,6 +23,7 @@ import {
   DollarSign,
   GraduationCap,
   ListChecks,
+  Info,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -207,8 +208,7 @@ const JobSeeker = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               whileHover={{ y: -5, scale: 1.02 }}
-              className='overflow-hidden cursor-pointer'
-              onClick={() => handleJobClick(job)}
+              className='overflow-hidden'
             >
               <Card className='p-8 backdrop-blur-sm border border-gray-200/50 hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white/50 to-transparent'>
                 <div className='space-y-4'>
@@ -233,65 +233,77 @@ const JobSeeker = () => {
                     <p className='text-sm'>{job.employment_type}</p>
                   </div>
 
-                  <Dialog
-                    open={dialogOpen}
-                    onOpenChange={setDialogOpen}
-                  >
-                    <DialogTrigger asChild>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleApply(job.id);
-                        }}
-                        className='w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-lg hover:shadow-xl transition-all duration-300'
-                      >
-                        Apply Now
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className='overflow-hidden backdrop-blur-lg bg-white/90 p-8 border border-gray-200/50'>
-                      <DialogHeader>
-                        <DialogTitle className='text-2xl font-display font-bold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'>
-                          Upload Your Resume
-                        </DialogTitle>
-                      </DialogHeader>
-                      <motion.div
-                        className='space-y-6'
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                      >
-                        <div className='relative'>
-                          <Input
-                            type='file'
-                            accept='.pdf'
-                            onChange={handleFileChange}
-                            className='cursor-pointer bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
-                          />
-                          <Upload className='absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
-                        </div>
+                  <div className='flex gap-2'>
+                    <Dialog>
+                      <DialogTrigger asChild>
                         <Button
-                          onClick={handleSubmitApplication}
-                          disabled={!selectedFile || isUploading}
-                          className='w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white'
+                          variant='outline'
+                          className='flex-1'
+                          onClick={() => handleJobClick(job)}
                         >
-                          {isUploading ? (
-                            <motion.div
-                              className='flex items-center'
-                              animate={{ opacity: [1, 0.5, 1] }}
-                              transition={{ repeat: Infinity, duration: 1.5 }}
-                            >
-                              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                              Processing...
-                            </motion.div>
-                          ) : (
-                            <div className='flex items-center justify-center'>
-                              <Send className='mr-2 h-4 w-4' />
-                              Submit Application
-                            </div>
-                          )}
+                          <Info className='w-4 h-4 mr-2' />
+                          View Details
                         </Button>
-                      </motion.div>
-                    </DialogContent>
-                  </Dialog>
+                      </DialogTrigger>
+                    </Dialog>
+
+                    <Dialog
+                      open={dialogOpen}
+                      onOpenChange={setDialogOpen}
+                    >
+                      <DialogTrigger asChild>
+                        <Button
+                          onClick={() => handleApply(job.id)}
+                          className='flex-1 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-lg hover:shadow-xl transition-all duration-300'
+                        >
+                          Apply Now
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className='overflow-hidden backdrop-blur-lg bg-white/90 p-8 border border-gray-200/50'>
+                        <DialogHeader>
+                          <DialogTitle className='text-2xl font-display font-bold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'>
+                            Upload Your Resume
+                          </DialogTitle>
+                        </DialogHeader>
+                        <motion.div
+                          className='space-y-6'
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                        >
+                          <div className='relative'>
+                            <Input
+                              type='file'
+                              accept='.pdf'
+                              onChange={handleFileChange}
+                              className='cursor-pointer bg-white/50 border-gray-200/50 hover:border-primary/50 transition-colors duration-300'
+                            />
+                            <Upload className='absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
+                          </div>
+                          <Button
+                            onClick={handleSubmitApplication}
+                            disabled={!selectedFile || isUploading}
+                            className='w-full bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white'
+                          >
+                            {isUploading ? (
+                              <motion.div
+                                className='flex items-center'
+                                animate={{ opacity: [1, 0.5, 1] }}
+                                transition={{ repeat: Infinity, duration: 1.5 }}
+                              >
+                                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                Processing...
+                              </motion.div>
+                            ) : (
+                              <div className='flex items-center justify-center'>
+                                <Send className='mr-2 h-4 w-4' />
+                                Submit Application
+                              </div>
+                            )}
+                          </Button>
+                        </motion.div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
               </Card>
             </motion.div>
