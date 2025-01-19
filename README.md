@@ -4,51 +4,40 @@
 
 Resume Analyser Ai represents a novel solution to the challenges in modern job application processes. Our approach focuses on leveraging cutting-edge AI technologies to create a more efficient and accurate Resume Analyser Aiing system.
 
-### Core Innovation: AI-Powered Processing
+## Documentation
 
-The platform's foundation rests on three key AI implementations:
+For detailed documentation about the Resume Analyser AI platform's features, architecture, and implementation details, please visit our [comprehensive documentation](https://balsam-colony-46f.notion.site/Documentation-for-AI-Powered-Job-Application-Platform-1808b6ffb8488019be7cc864d0a2dc5d?pvs=73).
 
-1. **Intelligent Document Processing**
+## Contact Information
 
-   - Automated extraction of structured data from resumes using advanced PDF parsing
-   - Semantic understanding of job requirements and candidate qualifications
-   - Real-time content analysis and standardization
+### Project Lead
 
-2. **Advanced Matching Algorithm**
+- **Name:** Shiv Awasthi
+- **Email:** awasthishiv0987@gmail.com
+- **Phone:** +91 8791346998
 
-   - Dynamic scoring system adapting to specific industry contexts
-   - Multi-factor analysis incorporating both explicit and implicit qualifications
-   - Continuous learning from successful matches and feedback
+### Project Details
 
-3. **Predictive Analytics**
-   - Success probability calculations for applications
-   - Skill gap analysis with actionable recommendations
-   - Market trend analysis for both candidates and employers
+- **Organization:** Tata Group (Internship)
+- **Demo:** [Resume Analyser AI Platform](https://resumeanalyserai.vercel.app/)
 
-## Generative AI Integration
+### Key Technical Features
 
-### gpt-4o Implementation
+- **Parallel Resume Processing**: Utilizes Web Workers for efficient parallel processing of multiple resumes
+- **Batch Processing System**: Implements intelligent batching with retry mechanisms for reliable processing
+- **Real-time Analysis**: Leverages OpenAI's GPT models for instant resume parsing and job matching
+- **Secure File Handling**: Uses Supabase storage for secure resume file management
+- **Scalable Architecture**: Built with React, TypeScript, and Supabase for enterprise-grade scalability
 
-- **Context-Aware Analysis**: Utilizes gpt-4o's advanced understanding to:
+### System Architecture
 
-  - Extract nuanced requirements from job descriptions
-  - Identify implicit skills from experience descriptions
-  - Generate detailed compatibility assessments
+The platform employs a modern tech stack with:
 
-- **Smart Feedback System**:
-  - Personalized improvement suggestions for candidates
-  - Automated response generation for initial screenings
-  - Dynamic question generation for assessment
-
-### Technical Architecture
-
-- **Frontend**: React/TypeScript for robust, type-safe UI
-- **Styling**: Modern UI with Tailwind CSS + shadcn-ui
-- **Backend**: Serverless architecture with Supabase
-- **AI Pipeline**:
-  - Primary: OpenAI gpt-4o API
-  - Document Processing: Unstructured API
-  - Custom ML models for specific matching tasks
+- Frontend: React with TypeScript for type-safe development
+- Backend: Supabase Edge Functions for serverless processing
+- Storage: Supabase Storage for secure file management
+- AI Integration: OpenAI GPT models for intelligent analysis
+- Worker System: Web Workers for parallel processing capabilities
 
 ## Development Setup
 
