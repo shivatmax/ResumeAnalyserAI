@@ -187,13 +187,23 @@ const JobSeeker = () => {
 
   return (
     <div className='container mx-auto p-6 overflow-hidden'>
-      <motion.h1
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className='text-4xl font-display font-bold mb-8 bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'
-      >
-        Available Jobs
-      </motion.h1>
+      <div className='flex justify-between items-center mb-8'>
+        <motion.h1
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className='text-4xl font-display font-bold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'
+        >
+          Available Jobs
+        </motion.h1>
+        <Button
+          onClick={() => navigate('/')}
+          variant='outline'
+          size='sm'
+          className='hover:bg-gray-100'
+        >
+          <span className='flex items-center gap-2'>← Back to Home</span>
+        </Button>
+      </div>
       <motion.div
         className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
         initial={{ opacity: 0 }}

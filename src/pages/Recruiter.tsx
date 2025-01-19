@@ -38,26 +38,36 @@ const Recruiter = () => {
               Recruiter Dashboard
             </h1>
           </div>
-          <Button
-            onClick={() => setShowForm(!showForm)}
-            variant={showForm ? 'outline' : 'default'}
-            size='sm'
-            className='hover:bg-gray-100'
-          >
-            <span className='flex items-center gap-2'>
-              {showForm ? (
-                <>
-                  <ListFilter className='w-4 h-4 text-gray-600' />
-                  View Posted Jobs
-                </>
-              ) : (
-                <>
-                  <PlusCircle className='w-4 h-4 text-gray-600' />
-                  Post New Job
-                </>
-              )}
-            </span>
-          </Button>
+          <div className='flex gap-3'>
+            <Button
+              onClick={() => navigate('/')}
+              variant='outline'
+              size='sm'
+              className='hover:bg-gray-100'
+            >
+              <span className='flex items-center gap-2'>← Back to Home</span>
+            </Button>
+            <Button
+              onClick={() => setShowForm(!showForm)}
+              variant={showForm ? 'outline' : 'default'}
+              size='sm'
+              className='hover:bg-gray-100'
+            >
+              <span className='flex items-center gap-2'>
+                {showForm ? (
+                  <>
+                    <ListFilter className='w-4 h-4 text-gray-600' />
+                    View Posted Jobs
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className='w-4 h-4 text-gray-600' />
+                    Post New Job
+                  </>
+                )}
+              </span>
+            </Button>
+          </div>
         </div>
 
         <motion.div
