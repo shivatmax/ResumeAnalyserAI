@@ -24,6 +24,7 @@ import {
   ListChecks,
   X,
   Info,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   Dialog,
@@ -32,8 +33,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { WorkerPool } from '@/utils/workerPool';
-
-type ApplicationStatus = Database['public']['Enums']['application_status'];
 
 const WORKER_POOL_SIZE = navigator.hardwareConcurrency || 4;
 const BATCH_SIZE = 10;
@@ -232,13 +231,23 @@ const MassApplier = () => {
 
   return (
     <div className='container mx-auto p-6 overflow-hidden'>
-      <motion.h1
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className='text-4xl font-display font-bold mb-8 bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'
-      >
-        Mass Apply
-      </motion.h1>
+      <div className='flex items-center justify-between mb-8'>
+        <motion.h1
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className='text-4xl font-display font-bold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent'
+        >
+          Mass Apply
+        </motion.h1>
+        <Button
+          variant='ghost'
+          onClick={() => navigate('/')}
+          className='flex items-center gap-2'
+        >
+          <ArrowLeft className='w-4 h-4' />
+          Back to Home
+        </Button>
+      </div>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
