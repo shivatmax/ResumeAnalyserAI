@@ -25,6 +25,8 @@ import {
   X,
   Info,
   ArrowLeft,
+  AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 import {
   Dialog,
@@ -32,10 +34,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { WorkerPool } from '@/utils/workerPool';
-
-const WORKER_POOL_SIZE = navigator.hardwareConcurrency || 4;
-const BATCH_SIZE = 10;
 
 const MassApplier = () => {
   const navigate = useNavigate();
@@ -46,6 +44,7 @@ const MassApplier = () => {
   const [processedCount, setProcessedCount] = useState(0);
   const [totalFiles, setTotalFiles] = useState(0);
   const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
+  const [showServiceEndedDialog, setShowServiceEndedDialog] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedJobDetails, setSelectedJobDetails] = useState<any>(null);
 
@@ -79,42 +78,8 @@ const MassApplier = () => {
     },
   });
 
-  const resetFormState = () => {
-    setSelectedFiles([]);
-    setSelectedJob(null);
-    setProgress(0);
-    setProcessedCount(0);
-    setTotalFiles(0);
-    const fileInput = document.querySelector(
-      'input[type="file"]'
-    ) as HTMLInputElement;
-    if (fileInput) {
-      fileInput.value = '';
-    }
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      const newFiles = Array.from(files);
-      const invalidFiles = newFiles.filter(
-        (file) => file.type !== 'application/pdf'
-      );
-
-      if (invalidFiles.length > 0) {
-        toast.error('Please upload only PDF files');
-        return;
-      }
-
-      const totalNewCount = selectedFiles.length + newFiles.length;
-      if (totalNewCount > 100) {
-        toast.error('Maximum 100 resumes allowed');
-        return;
-      }
-
-      setSelectedFiles((prev) => [...prev, ...newFiles]);
-      setTotalFiles(totalNewCount);
-    }
+  const handleFileChange = () => {
+    setShowServiceEndedDialog(true);
   };
 
   const removeFile = (index: number) => {
@@ -126,100 +91,12 @@ const MassApplier = () => {
     });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const submitApplications = async (applications: any[]) => {
-    const { error } = await supabase.from('applications').insert(
-      applications.map((app) => ({
-        job_id: app.job_id,
-        applicant_id: app.applicant_id,
-        resume_url: app.resume_url,
-        status: app.status,
-        parsed_data: app.parsed_data,
-        score: app.score,
-        scoring_breakdown: app.scoring_breakdown,
-        strengths: app.strengths,
-        gaps: app.gaps,
-        recommendation: app.recommendation,
-      }))
-    );
-
-    if (error) throw new Error(`Failed to save applications: ${error.message}`);
+  const handleMassApply = () => {
+    setShowServiceEndedDialog(true);
   };
 
-  const handleMassApply = async () => {
-    if (selectedFiles.length === 0 || !selectedJob) {
-      toast.error('Please select files and job');
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-      const files = selectedFiles;
-      const totalFiles = files.length;
-      const workerPool = new WorkerPool(
-        WORKER_POOL_SIZE,
-        '/src/workers/resumeProcessor.ts',
-        { type: 'module' }
-      );
-
-      // Process files in batches
-      const results = [];
-      for (let i = 0; i < files.length; i += BATCH_SIZE) {
-        const batch = files.slice(i, Math.min(i + BATCH_SIZE, files.length));
-
-        const session = await supabase.auth.getSession();
-        const userId = session?.data?.session?.user.id;
-        const supabaseConfig = {
-          url: import.meta.env.VITE_SUPABASE_URL,
-          serviceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
-        };
-        // Process batch in parallel
-        const batchPromises = batch.map((file) =>
-          workerPool
-            .process(file, userId, selectedJob, supabaseConfig)
-            .catch((error) => {
-              console.error(`Error processing ${file.name}:`, error);
-              return null;
-            })
-            .finally(() => {
-              setProcessedCount((prev) => {
-                const newCount = prev + 1;
-                setProgress((newCount / totalFiles) * 100);
-                return newCount;
-              });
-            })
-        );
-
-        // Wait for batch to complete
-        const batchResults = await Promise.all(batchPromises);
-        results.push(...batchResults.filter(Boolean));
-
-        // Optional: Add delay between batches to prevent rate limiting
-        if (i + BATCH_SIZE < files.length) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-      }
-
-      // Submit successful applications
-      if (results.length > 0) {
-        await submitApplications(results);
-        toast.success(
-          `Successfully processed ${results.length} out of ${totalFiles} applications`
-        );
-      }
-    } catch (error) {
-      console.error('Mass apply error:', error);
-      toast.error('Failed to process applications');
-    } finally {
-      setIsUploading(false);
-      resetFormState();
-    }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleJobClick = (job: any) => {
-    setSelectedJobDetails(job);
-    setJobDetailsOpen(true);
+  const handleJobClick = () => {
+    setShowServiceEndedDialog(true);
   };
 
   if (isLoading)
@@ -248,6 +125,60 @@ const MassApplier = () => {
           Back to Home
         </Button>
       </div>
+
+      <Dialog
+        open={showServiceEndedDialog}
+        onOpenChange={setShowServiceEndedDialog}
+      >
+        <DialogContent className='max-w-2xl'>
+          <Card className='p-8 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-primary/20'>
+            <div className='space-y-6 text-center'>
+              <div className='flex justify-center'>
+                <AlertTriangle className='w-16 h-16 text-yellow-500 animate-bounce' />
+              </div>
+
+              <h2 className='text-2xl font-display font-bold text-primary'>
+                Service Temporarily Unavailable 🚧
+              </h2>
+
+              <p className='text-lg text-gray-700'>
+                Due to Supabase free tier services ending, this feature is
+                currently unavailable.
+              </p>
+
+              <div className='space-y-4'>
+                <div className='flex items-center justify-center space-x-2 text-primary'>
+                  <Info className='w-5 h-5' />
+                  <p>Try Job Seeker feature to test the application</p>
+                </div>
+
+                <div className='flex items-center justify-center space-x-2 text-primary'>
+                  <ExternalLink className='w-5 h-5' />
+                  <a
+                    href='https://youtu.be/WZZAk1jGY00'
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='underline text-red-500 hover:text-red-600'
+                  >
+                    Watch demonstration video
+                  </a>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => {
+                  setShowServiceEndedDialog(false);
+                  window.open('https://youtu.be/WZZAk1jGY00', '_blank');
+                }}
+                className='bg-gradient-to-r from-primary to-indigo-600 text-white hover:from-primary/90 hover:to-indigo-600/90'
+              >
+                Got it
+              </Button>
+            </div>
+          </Card>
+        </DialogContent>
+      </Dialog>
+
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -390,7 +321,7 @@ const MassApplier = () => {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            handleJobClick(job);
+                            handleJobClick();
                           }}
                         >
                           <Info className='w-5 h-5 text-primary' />
